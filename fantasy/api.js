@@ -1,6 +1,6 @@
 // Arcade Fantasy ↔ Supabase. Every change goes through a database function
 // (see supabase/migrations/*_fantasy.sql) that checks the rules server-side.
-import { client, user } from '../shared/account.js?v=2';
+import { client, user } from '../shared/account.js?v=4';
 
 const sb = () => client({ detectSessionInUrl: true });
 

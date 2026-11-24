@@ -2,7 +2,7 @@
 // sync with Sleeper by the fantasy-sync edge function, so the browser and the
 // server agree on who exists). Weekly stats, projections and schedules come
 // straight from Sleeper's public API, which allows browser requests.
-import { client } from '../shared/account.js?v=2';
+import { client } from '../shared/account.js?v=4';
 
 const API = 'https://api.sleeper.app';
 const mem = new Map();

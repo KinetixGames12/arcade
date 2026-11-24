@@ -9,7 +9,9 @@ A hub of browser games with one shared account. Live at https://kinetixgames12.g
 - `shared/icon.svg` — the Kinetix mark (a K whose arms meet at a ball). `shared/brand/` holds the lockups, app icons, `og.png` share image and their HTML sources; `manifest.webmanifest` makes the hub installable.
 - `shared/art/<slug>.svg` — card art for each game on the hub.
 - `chess/` — bots, Lichess online play, Stockfish analysis and game review.
-- `supabase/migrations/` — database tables (Supabase project `arcade`). Every table is owner-only via row level security.
+- `fantasy/` — Kinetix Fantasy, shared by `fantasy-football/` (NFL) and `fantasy-basketball/` (NBA): leagues with invite codes, live snake drafts (Supabase Realtime), mock drafts vs bots, lineups with per-game locks, free agents, waivers (rolling or FAAB), trades with review, weekly head-to-head (points or NBA 9-cat), standings, playoffs and player cards. Rules live in the database (`supabase/migrations/*_fantasy*.sql`); `fantasy/scoring.js` is shared with the `fantasy-sync` edge function.
+- `supabase/functions/fantasy-sync/` — runs every 10 minutes (pg_cron): pulls the week, lock times, players, ADP and projections from Sleeper's free public API and scores matchups. Deploy with the Supabase MCP tools (`verify_jwt` off; it checks its own `x-cron-key`).
+- `supabase/migrations/` — database tables (Supabase project `arcade`). Every table has row level security: personal tables are owner-only, league tables are readable by league members and only changed through checked database functions.
 
 ## Adding a game
 
@@ -20,4 +22,4 @@ A hub of browser games with one shared account. Live at https://kinetixgames12.g
 
 ## Licences
 
-Stockfish 19 (GPLv3, `chess/vendor/stockfish/COPYING.txt`), chess.js (BSD-2), chess pieces by Colin M. L. Burnett, Unbounded and Inter fonts (SIL OFL 1.1, `shared/fonts/`).
+Stockfish 19 (GPLv3, `chess/vendor/stockfish/COPYING.txt`), chess.js (BSD-2), chess pieces by Colin M. L. Burnett, player data and headshots from Sleeper's public API, Unbounded and Inter fonts (SIL OFL 1.1, `shared/fonts/`).
