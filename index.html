@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0b0b14">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://ajnzimwmykqgflymjoun.supabase.co; object-src 'none'; base-uri 'self'; form-action 'none'">
+<title>Arcade</title>
+<link rel="icon" type="image/svg+xml" href="shared/icon.svg">
+<link rel="stylesheet" href="shared/hub.css?v=1">
+<link rel="stylesheet" href="shared/account.css?v=1">
+</head>
+<body>
+<header class="hub-top">
+  <a class="hub-brand" href="./"><img src="shared/icon.svg" alt=""><span>Arcade</span></a>
+  <div id="hubAcct"></div>
+</header>
+<main class="hub">
+  <section class="hero">
+    <h1>Pick a game.</h1>
+    <p>One account, every game, every device.</p>
+  </section>
+  <section class="grid" id="games" aria-label="Games"></section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.1/dist/umd/supabase.js" integrity="sha384-cP+QrKcaFzs7aIG1IzHGLKC5cjjlA05fYF2E7C0hqeDvsLKzwgYAS1cYhsDQB+L1" crossorigin="anonymous"></script>
+<script src="shared/config.js?v=1"></script>
+<script type="module" src="shared/hub.js?v=1"></script>
+</body>
+</html>

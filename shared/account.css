@@ -1,0 +1,15 @@
+.arc-acct { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.arc-who { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .8; }
+.arc-btn { background: #7b5cff; color: #fff; border: 0; border-radius: 9px; padding: 7px 14px; font-weight: 600; cursor: pointer; }
+.arc-btn:disabled { opacity: .6; }
+.arc-link { background: none; border: 0; color: inherit; opacity: .75; cursor: pointer; padding: 4px 6px; }
+.arc-dialog { border: 0; border-radius: 16px; padding: 0; width: min(400px, calc(100vw - 32px)); background: var(--panel, #fff); color: var(--text, #111); box-shadow: 0 24px 80px rgba(0,0,0,.35); }
+.arc-dialog::backdrop { background: rgba(8, 10, 20, .55); backdrop-filter: blur(3px); }
+.arc-form { position: relative; display: flex; flex-direction: column; gap: 12px; padding: 24px; }
+.arc-form h2 { margin: 0; font-size: 20px; }
+.arc-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; opacity: .85; }
+.arc-form input { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(128,128,128,.35); background: transparent; color: inherit; }
+.arc-muted { margin: 0; font-size: 14px; opacity: .7; }
+.arc-msg { margin: 0; min-height: 1.2em; font-size: 14px; color: #c2410c; }
+.arc-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.arc-x { position: absolute; top: 10px; right: 10px; background: none; border: 0; color: inherit; font-size: 16px; cursor: pointer; opacity: .6; }
