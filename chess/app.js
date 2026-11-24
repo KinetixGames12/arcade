@@ -3,8 +3,8 @@ import { Chess, DEFAULT_POSITION } from './vendor/chess.js?v=2';
 import { Board } from './board.js?v=2';
 import { Engine } from './engine.js?v=2';
 import * as li from './lichess.js?v=2';
-import * as sync from './sync.js?v=1';
-import { mountAccount, onAuthChange } from '../shared/account.js?v=1';
+import * as sync from './sync.js?v=2';
+import { mountAccount, onAuthChange } from '../shared/account.js?v=3';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -898,10 +898,10 @@ function renderSyncNote() {
   if (!el) return;
   if (hubUser) {
     el.textContent = account
-      ? 'Saved to your Arcade account — connected on every device where you\'re signed in.'
-      : 'Connect once and it follows your Arcade account to your other devices.';
+      ? 'Saved to your Kinetix account — connected on every device where you\'re signed in.'
+      : 'Connect once and it follows your Kinetix account to your other devices.';
   } else {
-    el.textContent = 'Tip: sign in to Arcade (top right) and your Lichess connection follows you to your phone and iPad.';
+    el.textContent = 'Tip: sign in to Kinetix (top right) and your Lichess connection follows you to your phone and iPad.';
   }
 }
 

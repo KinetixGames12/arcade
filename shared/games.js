@@ -1,4 +1,4 @@
-// Every game on the Arcade home page. To add a game: make a folder for it
+// Every game on the Kinetix home page. To add a game: make a folder for it
 // next to chess/, add card art in shared/art/<slug>.svg, then add an entry
 // here. `soon: true` shows it greyed out.
 export const GAMES = [

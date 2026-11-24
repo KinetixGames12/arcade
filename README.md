@@ -1,10 +1,12 @@
-# Arcade
+# Kinetix
+
+Kinetix is the brand; this repo is still called `arcade`.
 
 A hub of browser games with one shared account. Live at https://kinetixgames12.github.io/arcade/
 
 - `index.html` + `shared/` — the hub page, shared sign-in (`shared/account.js`) and the game list (`shared/games.js`).
-- `shared/arcade.css` — the Arcade look every game uses: colours, fonts (Unbounded + Inter, self-hosted in `shared/fonts/`, SIL OFL), buttons (`ar-btn`), cards, tabs, inputs. Light/dark follows the device; `shared/theme.js` adds a toggle.
-- `shared/icon.svg` — the Arcade mark (an A whose crossbar is a ball). `shared/brand/` holds the lockups, app icons, `og.png` share image and their HTML sources; `manifest.webmanifest` makes the hub installable.
+- `shared/arcade.css` — the Kinetix look every game uses: colours, fonts (Unbounded + Inter, self-hosted in `shared/fonts/`, SIL OFL), buttons (`ar-btn`), cards, tabs, inputs. Light/dark follows the device; `shared/theme.js` adds a toggle.
+- `shared/icon.svg` — the Kinetix mark (a K whose arms meet at a ball). `shared/brand/` holds the lockups, app icons, `og.png` share image and their HTML sources; `manifest.webmanifest` makes the hub installable.
 - `shared/art/<slug>.svg` — card art for each game on the hub.
 - `chess/` — bots, Lichess online play, Stockfish analysis and game review.
 - `supabase/migrations/` — database tables (Supabase project `arcade`). Every table is owner-only via row level security.

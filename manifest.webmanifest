@@ -1,7 +1,7 @@
 {
-  "name": "Arcade",
-  "short_name": "Arcade",
-  "description": "Chess, fantasy football and fantasy basketball. One account, every game.",
+  "name": "Kinetix",
+  "short_name": "Kinetix",
+  "description": "Games in motion. A growing collection of free browser games.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
