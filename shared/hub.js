@@ -1,5 +1,5 @@
-import { GAMES } from './games.js?v=2';
-import { mountAccount } from './account.js?v=2';
+import { GAMES } from './games.js?v=3';
+import { mountAccount } from './account.js?v=3';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 

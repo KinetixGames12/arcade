@@ -1,4 +1,4 @@
-// Arcade account: one email + password sign-in shared by every game.
+// Kinetix account: one email + password sign-in shared by every game.
 // Games call client() for their own tables and mountAccount() for the
 // header button. Needs supabase-js (UMD) and shared/config.js loaded first.
 
@@ -43,14 +43,14 @@ export function mountAccount(el, opts = {}) {
     const u = await user();
     el.className = 'arc-acct';
     el.innerHTML = u
-      ? `<span class="arc-who" title="Signed in to Arcade as ${esc(u.email)}"><i aria-hidden="true">${esc((u.email || '?')[0].toUpperCase())}</i><span>${esc(u.email)}</span></span><button type="button" class="arc-link" data-arc="out">Sign out</button>`
+      ? `<span class="arc-who" title="Signed in to Kinetix as ${esc(u.email)}"><i aria-hidden="true">${esc((u.email || '?')[0].toUpperCase())}</i><span>${esc(u.email)}</span></span><button type="button" class="arc-link" data-arc="out">Sign out</button>`
       : '<button type="button" class="arc-btn" data-arc="in">Sign in</button>';
   };
   el.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-arc]');
     if (!b) return;
     if (b.dataset.arc === 'in') openDialog();
-    else if (confirm('Sign out of Arcade on this device?')) await c.auth.signOut({ scope: 'local' });
+    else if (confirm('Sign out of Kinetix on this device?')) await c.auth.signOut({ scope: 'local' });
   });
   onAuthChange(render);
   render();
@@ -65,7 +65,7 @@ function openDialog() {
     dlg.className = 'arc-dialog';
     dlg.innerHTML = `
       <form method="dialog" class="arc-form">
-        <h2 data-t="title">Sign in to Arcade</h2>
+        <h2 data-t="title">Sign in to Kinetix</h2>
         <p class="arc-muted">One account for every game. Your settings and connections follow you to every device.</p>
         <label>Email<input name="email" type="email" autocomplete="email" required></label>
         <label>Password<input name="password" type="password" autocomplete="current-password" minlength="8" required></label>
@@ -82,7 +82,7 @@ function openDialog() {
     let signup = false;
     const setMode = (s) => {
       signup = s;
-      t('title').textContent = s ? 'Create an Arcade account' : 'Sign in to Arcade';
+      t('title').textContent = s ? 'Create a Kinetix account' : 'Sign in to Kinetix';
       t('go').textContent = s ? 'Create account' : 'Sign in';
       t('mode').textContent = s ? 'Have an account? Sign in' : 'New here? Create an account';
       f.password.autocomplete = s ? 'new-password' : 'current-password';

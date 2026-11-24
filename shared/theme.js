@@ -1,4 +1,4 @@
-// Arcade theme: follows the device (light/dark) unless the visitor picks one.
+// Kinetix theme: follows the device (light/dark) unless the visitor picks one.
 // Load as a plain <script> in <head> so the page never flashes the wrong theme.
 (function () {
   var KEY = 'arcade-theme';
