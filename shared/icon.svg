@@ -1,1 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7b5cff"/><stop offset="1" stop-color="#ff5c9a"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#g)"/><path d="M18 40h28a4 4 0 0 1 4 4v2a4 4 0 0 1-4 4H18a4 4 0 0 1-4-4v-2a4 4 0 0 1 4-4zm6-6l4-16h8l4 16z" fill="#fff"/><circle cx="32" cy="14" r="5" fill="#fff"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="arc-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d1840"/><stop offset="1" stop-color="#0a0817"/></linearGradient>
+    <linearGradient id="arc-a" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d9ff4a"/><stop offset="1" stop-color="#3ef0c8"/></linearGradient>
+    <radialGradient id="arc-ball" cx=".38" cy=".34" r=".7"><stop offset="0" stop-color="#ff8fc0"/><stop offset=".55" stop-color="#ff3d8b"/><stop offset="1" stop-color="#c41866"/></radialGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="url(#arc-bg)"/>
+  <rect x="1" y="1" width="62" height="62" rx="17" fill="none" stroke="#ffffff" stroke-opacity=".08" stroke-width="2"/>
+  <path d="M16.5 47.5 32 16.5l15.5 31" fill="none" stroke="url(#arc-a)" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="32" cy="39.5" r="5.6" fill="url(#arc-ball)"/>
+</svg>

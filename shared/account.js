@@ -43,7 +43,7 @@ export function mountAccount(el, opts = {}) {
     const u = await user();
     el.className = 'arc-acct';
     el.innerHTML = u
-      ? `<span class="arc-who" title="Signed in to Arcade">${esc(u.email)}</span><button type="button" class="arc-link" data-arc="out">Sign out</button>`
+      ? `<span class="arc-who" title="Signed in to Arcade as ${esc(u.email)}"><i aria-hidden="true">${esc((u.email || '?')[0].toUpperCase())}</i><span>${esc(u.email)}</span></span><button type="button" class="arc-link" data-arc="out">Sign out</button>`
       : '<button type="button" class="arc-btn" data-arc="in">Sign in</button>';
   };
   el.addEventListener('click', async (e) => {

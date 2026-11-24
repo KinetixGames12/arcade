@@ -1,15 +1,25 @@
-.arc-acct { display: flex; align-items: center; gap: 8px; font-size: 14px; }
-.arc-who { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .8; }
-.arc-btn { background: #7b5cff; color: #fff; border: 0; border-radius: 9px; padding: 7px 14px; font-weight: 600; cursor: pointer; }
+/* Arcade sign-in button + dialog. Uses shared/arcade.css tokens when present. */
+.arc-acct { display: flex; align-items: center; gap: 8px; font-size: 14px; min-width: 0; }
+.arc-who { display: inline-flex; align-items: center; gap: 8px; max-width: 200px; min-width: 0; color: var(--text, inherit); }
+.arc-who i { flex-shrink: 0; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; font: 800 13px/1 var(--font-display, sans-serif); font-style: normal; color: var(--volt-ink, #11140a); background: var(--grad, #d4ff3f); }
+.arc-who span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .85; }
+.arc-btn { display: inline-flex; align-items: center; min-height: 38px; background: var(--volt, #d4ff3f); color: var(--volt-ink, #11140a); border: 0; border-radius: 999px; padding: 8px 16px; font: 700 14px/1 var(--font, inherit); cursor: pointer; transition: transform .15s; }
+.arc-btn:hover { transform: translateY(-1px); }
 .arc-btn:disabled { opacity: .6; }
-.arc-link { background: none; border: 0; color: inherit; opacity: .75; cursor: pointer; padding: 4px 6px; }
-.arc-dialog { border: 0; border-radius: 16px; padding: 0; width: min(400px, calc(100vw - 32px)); background: var(--panel, #fff); color: var(--text, #111); box-shadow: 0 24px 80px rgba(0,0,0,.35); }
-.arc-dialog::backdrop { background: rgba(8, 10, 20, .55); backdrop-filter: blur(3px); }
-.arc-form { position: relative; display: flex; flex-direction: column; gap: 12px; padding: 24px; }
-.arc-form h2 { margin: 0; font-size: 20px; }
-.arc-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; opacity: .85; }
-.arc-form input { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(128,128,128,.35); background: transparent; color: inherit; }
-.arc-muted { margin: 0; font-size: 14px; opacity: .7; }
-.arc-msg { margin: 0; min-height: 1.2em; font-size: 14px; color: #c2410c; }
+.arc-link { background: none; border: 0; color: inherit; opacity: .7; cursor: pointer; padding: 4px 6px; font: inherit; font-size: 13px; }
+.arc-link:hover { opacity: 1; }
+.arc-dialog { border: 1px solid var(--line, transparent); border-radius: var(--r-xl, 20px); padding: 0; width: min(420px, calc(100vw - 32px)); background: var(--panel, #fff); color: var(--text, #111); box-shadow: var(--shadow-lg, 0 24px 80px rgba(0,0,0,.35)); }
+.arc-dialog[open] { animation: arc-pop .28s cubic-bezier(.2,.8,.2,1); }
+@keyframes arc-pop { from { opacity: 0; transform: translateY(10px) scale(.97); } }
+.arc-dialog::backdrop { background: rgba(8, 7, 15, .6); backdrop-filter: blur(4px); }
+.arc-form { position: relative; display: flex; flex-direction: column; gap: 14px; padding: 28px 24px 24px; }
+.arc-form::before { content: ''; width: 44px; height: 44px; border-radius: 13px; background: url('icon.svg') center/cover; }
+.arc-form h2 { margin: 0; font: 800 22px/1.15 var(--font-display, inherit); letter-spacing: -.02em; }
+.arc-form label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--muted, inherit); }
+.arc-form input { font: inherit; font-size: 16px; min-height: 44px; padding: 10px 12px; border-radius: var(--r, 10px); border: 1px solid var(--line-2, rgba(128,128,128,.35)); background: var(--panel-2, transparent); color: var(--text, inherit); }
+.arc-form input:focus { outline: none; border-color: var(--accent, #7b5cff); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #7b5cff) 25%, transparent); }
+.arc-muted { margin: 0; font-size: 14px; color: var(--muted, inherit); }
+.arc-msg { margin: 0; min-height: 1.2em; font-size: 14px; color: var(--bad, #c2410c); }
 .arc-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-.arc-x { position: absolute; top: 10px; right: 10px; background: none; border: 0; color: inherit; font-size: 16px; cursor: pointer; opacity: .6; }
+.arc-x { position: absolute; top: 14px; right: 14px; width: 32px; height: 32px; border-radius: 50%; background: var(--bg-2, none); border: 0; color: inherit; font-size: 14px; cursor: pointer; opacity: .7; }
+@media (max-width: 520px) { .arc-who span { display: none; } }

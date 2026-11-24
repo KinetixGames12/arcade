@@ -1,7 +1,8 @@
 // Every game on the Arcade home page. To add a game: make a folder for it
-// next to chess/, then add an entry here. `soon: true` shows it greyed out.
+// next to chess/, add card art in shared/art/<slug>.svg, then add an entry
+// here. `soon: true` shows it greyed out.
 export const GAMES = [
-  { slug: 'chess', name: 'Chess', emoji: '♞', blurb: 'Bots from beginner to Stockfish, Lichess online play, and a full engine review of every game.', accent: '#7b5cff' },
-  { slug: 'fantasy-football', name: 'Fantasy Football', emoji: '🏈', blurb: 'Draft, set lineups and trade through a full NFL season.', accent: '#22c55e', soon: true },
-  { slug: 'fantasy-basketball', name: 'Fantasy Basketball', emoji: '🏀', blurb: 'Build an NBA roster and play head-to-head every week.', accent: '#f97316', soon: true },
+  { slug: 'chess', name: 'Chess', blurb: 'Bots with personalities, Lichess online play, puzzles, and a full engine review of every game.', accent: '#7b5cff', tags: ['Bots', 'Online', 'Review'] },
+  { slug: 'fantasy-football', name: 'Fantasy Football', blurb: 'Start a league with friends, run a live snake draft, then set lineups and trade through the NFL season.', accent: '#22c55e', tags: ['NFL', 'Leagues', 'Live draft'], soon: true },
+  { slug: 'fantasy-basketball', name: 'Fantasy Basketball', blurb: 'Points or 9-cat. Draft an NBA roster and go head-to-head every week.', accent: '#f97316', tags: ['NBA', 'Leagues', '9-cat'], soon: true },
 ];
