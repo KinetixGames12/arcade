@@ -1,0 +1,16 @@
+{
+  "name": "Arcade",
+  "short_name": "Arcade",
+  "description": "Chess, fantasy football and fantasy basketball. One account, every game.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#08070f",
+  "theme_color": "#08070f",
+  "icons": [
+    { "src": "shared/brand/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "shared/brand/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "shared/brand/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "shared/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
