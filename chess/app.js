@@ -1,6 +1,12 @@
-// Arcade Chess — bots, Lichess play and Stockfish analysis in one page.
+// Kinetix Chess: bots, Lichess play, Stockfish analysis, Game Review and Learn.
 import { Chess, DEFAULT_POSITION } from './vendor/chess.js?v=2';
-import { Board } from './board.js?v=2';
+import { Board, PIECE_SETS } from './board.js?v=3';
+import * as snd from './sounds.js?v=1';
+import { buildReview, coachNote } from './review.js?v=1';
+import { CLASSES, ORDER, badgeSvg } from './badges.js?v=1';
+import * as bots from './bots.js?v=1';
+import * as book from './openings.js?v=1';
+import { createLearn } from './learn.js?v=1';
 import { Engine } from './engine.js?v=2';
 import * as li from './lichess.js?v=2';
 import * as sync from './sync.js?v=2';
@@ -13,7 +19,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 /* ── persistence ─────────────────────────────────────────────── */
 const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* full or private */ } };
-const settings = Object.assign({ engine: 'lite', depth: '20', lines: 3, reviewDepth: 16, elo: 1200 }, load('arc.chess.settings', {}));
+const settings = Object.assign({ engine: 'lite', depth: '20', lines: 3, reviewDepth: 16, elo: 1200, botId: 'mara', board: 'kinetix', pieces: 'cburnett', sound: true, coords: true, anim: true, coach: true, premove: true }, load('arc.chess.settings', {}));
 const saveSettings = () => save('arc.chess.settings', settings);
 let history = load('arc.chess.games', []);
 
@@ -26,20 +32,10 @@ function toast(msg, ms = 3500) {
 }
 
 /* ── sound ───────────────────────────────────────────────────── */
-let actx = null;
-function sound(capture) {
-  try {
-    actx = actx || new AudioContext();
-    const o = actx.createOscillator();
-    const g = actx.createGain();
-    o.type = 'triangle';
-    o.frequency.value = capture ? 220 : 330;
-    g.gain.setValueAtTime(0.12, actx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + 0.09);
-    o.connect(g).connect(actx.destination);
-    o.start();
-    o.stop(actx.currentTime + 0.1);
-  } catch { /* no audio */ }
+snd.setSound(settings.sound);
+function soundFor(r) {
+  if (!r) return;
+  snd.play(/[+#]/.test(r.san) ? 'check' : r.uci.length > 4 ? 'promote' : r.san.startsWith('O-O') ? 'castle' : r.captured ? 'capture' : 'move');
 }
 
 /* ── game state ──────────────────────────────────────────────── */
@@ -132,11 +128,39 @@ function gameEnd(fen) {
 
 /* ── board ───────────────────────────────────────────────────── */
 const board = new Board($('#board'), {
-  legal: (sq) => chessAt(curFen()).moves({ square: sq, verbose: true }),
+  legal: (sq) => chessAt(boardFen()).moves({ square: sq, verbose: true }),
   onMove: (from, to, promotion) => userMove({ from, to, promotion }),
+  premoveDests: (sq) => premoveDests(sq),
+  onPremove: (pm) => { G.premove = pm; if (pm) snd.play('premove'); },
+  pieceSet: settings.pieces,
 });
+const boardFen = () => (G.mode === 'learn' ? G.lp.fen : curFen());
+
+// Where a piece could go next turn (premove): pretend it is already our move.
+function premoveDests(sq) {
+  const parts = lastFen().split(' ');
+  parts[1] = G.myColor; parts[3] = '-';
+  try {
+    return new Chess(parts.join(' ')).moves({ square: sq, verbose: true }).map((m) => m.to);
+  } catch {
+    return 'abcdefgh'.split('').flatMap((f) => [1, 2, 3, 4, 5, 6, 7, 8].map((r) => f + r)).filter((x) => x !== sq);
+  }
+}
+function canPremove() {
+  return settings.premove && G.live && (G.mode === 'online' || G.mode === 'bot') && G.cursor === G.moves.length && turnOf(lastFen()) !== G.myColor;
+}
+// Plays a queued premove once it is our turn (dropped if it became illegal).
+function firePremove() {
+  const pm = G.premove;
+  if (!pm || !G.live || turnOf(lastFen()) !== G.myColor) return;
+  G.premove = null;
+  board.setPremove(null);
+  if (playMove(lastFen(), pm)) setTimeout(() => userMove(pm), 60);
+}
 
 function canMove() {
+  if (G.mode === 'learn') return !!G.lp?.movable;
+  if (G.retry) return true;
   if (G.mode === 'analysis') return !reviewRun;
   if (!G.live || G.cursor !== G.moves.length) return false;
   return turnOf(curFen()) === G.myColor;
@@ -174,6 +198,13 @@ function fmtEval(ev) {
 
 /* ── rendering ───────────────────────────────────────────────── */
 function render() {
+  if (G.mode === 'learn') {
+    const lp = G.lp;
+    board.set({ fen: lp.fen, orientation: lp.orientation, lastMove: lp.lastMove, check: checkSq(lp.fen), movable: !!lp.movable, premovable: false, color: turnOf(lp.fen), arrows: lp.arrows || [], badge: null });
+    $('#pTop').innerHTML = ''; $('#pBot').innerHTML = '';
+    $('#gameCard').hidden = true; $('#engineCard').hidden = true; $('#evalbar').hidden = true;
+    return;
+  }
   const fen = curFen();
   const c = chessAt(fen);
   const last = G.cursor > 0 ? G.moves[G.cursor - 1] : null;
@@ -182,7 +213,13 @@ function render() {
     const k = c.board().flat().find((p) => p && p.type === 'k' && p.color === c.turn());
     check = k?.square || null;
   }
-  board.set({ fen, orientation: G.orientation, lastMove: last ? [last.from, last.to] : null, check, movable: canMove(), arrows: currentArrows() });
+  const i = G.cursor - 1;
+  const cls = i >= 0 ? (G.review?.cls[i] || G.coachCls?.[i]) : null;
+  board.set({
+    fen, orientation: G.orientation, lastMove: last ? [last.from, last.to] : null, check, movable: canMove(), premovable: canPremove(),
+    color: G.live || G.retry ? (G.retry ? turnOf(fen) : G.myColor) : turnOf(fen), arrows: currentArrows(), badge: cls && last ? { square: last.to, cls } : null,
+  });
+  if (!canPremove() && G.premove) { G.premove = null; board.setPremove(null); }
   renderPlayers();
   renderMoves();
   renderStatus();
@@ -190,6 +227,24 @@ function render() {
 }
 
 const lastFen = () => (G.moves.length ? G.moves[G.moves.length - 1].fen : G.startFen);
+function checkSq(fen) {
+  const c = chessAt(fen);
+  if (!c.inCheck()) return null;
+  return c.board().flat().find((p) => p && p.type === 'k' && p.color === c.turn())?.square || null;
+}
+// Captured pieces and material lead for one side, from the current position.
+const GLYPH = { p: '♟', n: '♞', b: '♝', r: '♜', q: '♛' };
+function capturedHtml(color) {
+  const start = { p: 8, n: 2, b: 2, r: 2, q: 1 };
+  const have = { w: { p: 0, n: 0, b: 0, r: 0, q: 0 }, b: { p: 0, n: 0, b: 0, r: 0, q: 0 } };
+  for (const ch of curFen().split(' ')[0]) { const t = ch.toLowerCase(); if (have.w[t] != null) have[ch === t ? 'b' : 'w'][t]++; }
+  const opp = color === 'w' ? 'b' : 'w';
+  const val = { p: 1, n: 3, b: 3, r: 5, q: 9 };
+  const mat = (c) => Object.entries(have[c]).reduce((s, [t, n]) => s + n * val[t], 0);
+  const lead = mat(color) - mat(opp);
+  const caps = ['q', 'r', 'b', 'n', 'p'].map((t) => GLYPH[t].repeat(Math.max(0, start[t] - have[opp][t]))).join('');
+  return caps || lead > 0 ? `<span class="captured">${caps}${lead > 0 ? `<b>+${lead}</b>` : ''}</span>` : '';
+}
 
 function playerHtml(color) {
   const p = color === 'w' ? G.white : G.black;
@@ -197,7 +252,8 @@ function playerHtml(color) {
   const title = p.title ? `<span class="title">${esc(p.title)}</span> ` : '';
   const acc = G.review ? `<span class="acc">${G.review.acc[color].toFixed(1)}%</span>` : '';
   const turn = G.live && turnOf(lastFen()) === color;
-  return `<span class="dot ${color}"></span><span class="pname">${title}${esc(p.name)}${rating}</span>${acc}<span class="clock ${turn ? 'run' : ''}" data-clock="${color}">${clockText(color)}</span>`;
+  const av = p.bot ? bots.avatar(p.bot, 32) : `<span class="dot ${color}"></span>`;
+  return `${av}<span class="pname">${title}${esc(p.name)}${rating}</span>${capturedHtml(color)}${acc}<span class="clock ${turn ? 'run' : ''}" data-clock="${color}">${clockText(color)}</span>`;
 }
 function renderPlayers() {
   const topColor = G.orientation === 'white' ? 'b' : 'w';
@@ -205,7 +261,6 @@ function renderPlayers() {
   $('#pBot').innerHTML = playerHtml(topColor === 'w' ? 'b' : 'w');
 }
 
-const CLS_MARK = { inaccuracy: '?!', mistake: '?', blunder: '??', best: '' };
 function renderMoves() {
   const el = $('#moves');
   const startNo = Number(G.startFen.split(' ')[5]) || 1;
@@ -216,12 +271,13 @@ function renderMoves() {
     const isWhite = blackFirst ? i % 2 === 1 : i % 2 === 0;
     const no = startNo + Math.floor((i + (blackFirst ? 1 : 0)) / 2);
     if (isWhite) parts.push(`<span class="no">${no}.</span>`);
-    else if (i === 0) parts.push(`<span class="no">${no}…</span>`);
-    const cls = G.review?.cls[i];
-    parts.push(`<button class="mv ${G.cursor === ply ? 'on' : ''} ${cls || ''}" data-ply="${ply}">${esc(m.san)}${cls && CLS_MARK[cls] ? `<i>${CLS_MARK[cls]}</i>` : ''}</button>`);
+    else if (i === 0) parts.push(`<span class="no">${no}.</span><span></span>`);
+    const cls = G.review?.cls[i] || G.coachCls?.[i];
+    const icon = cls && cls !== 'good' ? badgeSvg(cls, 16) : '';
+    parts.push(`<button class="mv ${G.cursor === ply ? 'on' : ''}" data-ply="${ply}">${icon}${esc(m.san)}</button>`);
   });
   if (G.result && !G.live) parts.push(`<span class="res">${esc(G.result === '1/2-1/2' ? '½–½' : G.result)}</span>`);
-  el.innerHTML = parts.join('') || '<p class="muted small">No moves yet.</p>';
+  el.innerHTML = parts.join('') || '<p class="muted small empty">No moves yet.</p>';
   const on = el.querySelector('.mv.on');
   if (on) el.scrollTop = on.offsetTop - el.offsetTop - el.clientHeight / 2;
 }
@@ -230,9 +286,12 @@ function renderStatus() {
   $('#gameCard').hidden = false;
   const turn = turnOf(lastFen());
   let s = G.status;
-  if (!s && G.live) s = turn === G.myColor ? 'Your move' : G.mode === 'bot' ? `${botName(G.bot.elo)} is thinking…` : 'Waiting for opponent…';
+  if (!s && G.live) s = turn === G.myColor ? 'Your move' : G.mode === 'bot' ? `${G.bot.name} is thinking…` : 'Waiting for opponent…';
+  const op = book.gameOpening([G.startFen, ...G.moves.slice(0, G.cursor).map((m) => m.fen)]);
+  $('#opening').textContent = op ? `${op.eco} · ${op.name}` : '';
   if (!s && G.mode === 'analysis') s = G.moves.length ? 'Analysis' : 'Analysis board — move any piece';
   $('#status').textContent = s;
+  renderCoach();
 
   const a = [];
   if (G.mode === 'bot' && G.live) {
@@ -309,10 +368,29 @@ function clockSwitch(next) {
 
 /* ── user moves ──────────────────────────────────────────────── */
 function userMove(mv) {
-  const fen = curFen();
+  const fen = boardFen();
   const r = playMove(fen, mv);
   if (!r) return render();
-  sound(r.captured);
+  soundFor(r);
+  if (G.mode === 'learn') { const before = G.lp.fen; G.learn.onMove(before, r); return; }
+  if (G.retry) {
+    const { ply, best, second } = G.retry;
+    const good = r.uci === best || (second && r.uci === second);
+    if (good) {
+      snd.play('correct');
+      G.retry = null;
+      G.status = `${r.san} is ${r.uci === best ? 'the best move' : 'a strong alternative'}! ✓`;
+      G.cursor = ply + 1;
+      render();
+    } else {
+      snd.play('illegal');
+      G.status = `${r.san} isn't it. Try again (or use ← → to leave).`;
+      board.set({ fen: r.fen, lastMove: [r.from, r.to], movable: false });
+      setTimeout(() => { if (G.retry) render(); }, 700);
+      $('#status').textContent = G.status;
+    }
+    return;
+  }
   if (G.mode === 'analysis') {
     if (G.cursor < G.moves.length) {
       if (G.moves[G.cursor].uci === r.uci) { G.cursor++; return afterNav(); }
@@ -349,22 +427,28 @@ function userMove(mv) {
 }
 
 /* ── bots ────────────────────────────────────────────────────── */
-const BOTS = [
-  { name: 'Pebble', elo: 400, blurb: 'Knows how the pieces move. Mostly.' },
-  { name: 'Sprout', elo: 800, blurb: 'Hangs a piece now and then.' },
-  { name: 'Knightly', elo: 1200, blurb: 'Solid club beginner.' },
-  { name: 'Bishop Ray', elo: 1600, blurb: 'Sees two-move tactics.' },
-  { name: 'Castellan', elo: 2000, blurb: 'Strong club player.' },
-  { name: 'Vortex', elo: 2400, blurb: 'Master strength.' },
-  { name: 'Nova', elo: 2800, blurb: 'World-class.' },
-  { name: 'Max', elo: 3200, blurb: 'Full-strength Stockfish. Good luck.' },
-];
-const botName = (elo) => BOTS.find((b) => b.elo === elo)?.name || `Stockfish ${elo}`;
-function botSearchOpts(elo) {
-  if (elo >= 3150) return { movetime: 1500 };
-  if (elo >= 1320) return { elo, movetime: Math.round(400 + (elo - 1320) / 3) };
-  const t = (elo - 400) / 920; // 0..1
-  return { skill: Math.round(t * 6), depth: 1 + Math.round(t * 5), movetime: 400 };
+// The bot being played (a roster character, a custom Elo, or "match my level").
+function botFor(id, elo) {
+  if (id === 'match') { const r = bots.myRating(); return { id: 'match', name: 'Mirror', elo: r, color: '#d4ff3f', face: 'smile', style: 'universal', bio: `Plays at your estimated level (${r}). It adapts after every game.`, book: [], say: { start: ['Let’s see how you’ve improved.'], capture: ['Hm.'], check: ['Check.'], win: ['Close one.'], lose: ['You’re getting stronger.'], draw: ['Even match.'] } }; }
+  if (id === 'custom') return { id: 'custom', name: `Stockfish ${elo}`, elo, color: '#9aa0b4', face: 'robot', style: 'universal', bio: 'Stockfish at the strength you set.', book: [], say: {} };
+  return bots.byId(id) || bots.BOTS[3];
+}
+function botSay(kind) {
+  const line = bots.pick(G.bot?.say?.[kind]);
+  if (!line) return;
+  G.speech = { who: G.bot, text: line };
+  renderCoach();
+}
+function renderCoach() {
+  const el = $('#coach');
+  const c = G.coachMsg && G.coachMsg.ply === G.cursor ? G.coachMsg : null;
+  if (c && settings.coach) {
+    el.hidden = false;
+    el.innerHTML = `${badgeSvg(c.cls, 24)}<p><b>Coach:</b> ${esc(c.text)}</p>`;
+  } else if (G.mode === 'bot' && G.speech && G.bot) {
+    el.hidden = false;
+    el.innerHTML = `${bots.avatar(G.bot, 30)}<p><b>${esc(G.bot.name)}:</b> ${esc(G.speech.text)}</p>`;
+  } else el.hidden = true;
 }
 
 let engine = null;
@@ -388,18 +472,19 @@ function getEngine() {
   return engine;
 }
 
-function startBot(elo, colorPref, clock) {
+function startBot(id, colorPref, clock) {
   stopAnalysis();
   leaveOnline();
+  const bot = botFor(id, settings.elo);
   const myColor = colorPref === 'r' ? (Math.random() < 0.5 ? 'w' : 'b') : colorPref;
   const me = { name: account ? account.username : 'You' };
-  const bot = { name: botName(elo), rating: elo };
+  const bp = { name: bot.name, rating: bot.elo, bot };
   Object.assign(G, {
     mode: 'bot', startFen: DEFAULT_POSITION, moves: [], cursor: 0,
     orientation: myColor === 'w' ? 'white' : 'black',
-    white: myColor === 'w' ? me : bot, black: myColor === 'w' ? bot : me,
+    white: myColor === 'w' ? me : bp, black: myColor === 'w' ? bp : me,
     result: null, status: '', live: true, myColor, review: null, historyId: null,
-    bot: { elo, colorPref, clockSpec: clock }, online: null,
+    bot: { ...bot, colorPref, clockSpec: clock }, online: null, premove: null, coachCls: [], coachMsg: null, coachPrev: null, speech: null,
   });
   if (clock && clock !== '0') {
     const [m, inc] = clock.split('+').map(Number);
@@ -407,6 +492,7 @@ function startBot(elo, colorPref, clock) {
   } else G.clock = null;
   showTab('play', true);
   render();
+  botSay('start');
   if (myColor === 'b') botReply();
 }
 
@@ -415,40 +501,74 @@ async function botReply() {
   const plies = G.moves.length;
   const fen = lastFen();
   const t0 = performance.now();
-  let res;
+  const bot = G.bot;
+  let uci = null;
+  let res = null;
   try {
-    res = await getEngine().search(fen, botSearchOpts(G.bot.elo));
+    // The bot's search also tells the coach how good your last move was.
+    res = await getEngine().search(fen, { ...bots.searchOpts(bot.elo), multipv: settings.coach || bot.elo < 3150 ? 3 : 1 });
   } catch (e) {
     toast(`Bot engine error: ${e.message}`);
     return;
   }
   const stale = () => G.moves !== gameRef || G.moves.length !== plies || !G.live || G.mode !== 'bot';
   if (!res || stale()) return;
-  const wait = 350 - (performance.now() - t0);
+  if (res.lines?.[0] && plies > 0) coachOnLastMove(fen, res);
+  uci = bots.bookMove(bot, fen) || bots.chooseLine(bot, res.lines, chessAt(fen)) || res.best;
+  const wait = 450 - (performance.now() - t0);
   if (wait > 0) await sleep(wait);
   if (stale()) return;
-  const r = res.best && playUci(fen, res.best);
+  const r = uci && playUci(fen, uci);
   if (!r) return;
+  const line = res.lines?.find((l) => l.pv[0] === uci);
+  G.coachPrev = line ? { fen: r.fen, eval: whiteEval(line, fen), best: line.pv[1], pv: line.pv.slice(1) } : null;
   const atEnd = G.cursor === G.moves.length;
   G.moves.push(r);
   if (atEnd) G.cursor = G.moves.length;
-  sound(r.captured);
+  soundFor(r);
+  if (r.captured && Math.random() < 0.5) botSay('capture');
+  else if (/\+/.test(r.san) && Math.random() < 0.5) botSay('check');
   clockSwitch(turnOf(r.fen));
   const end = gameEnd(r.fen);
   if (end) return finishBot(end.result, end.status);
   render();
+  firePremove();
+}
+
+// Grades the move you just played using the bot's two searches.
+function coachOnLastMove(fen, res) {
+  const i = G.moves.length - 1;
+  const mv = G.moves[i];
+  const prev = G.coachPrev;
+  if (!mv || !prev || prev.fen !== fenAt(i) || turnOf(fenAt(i)) !== G.myColor) return;
+  const A = { eval: whiteEval(res.lines[0], fen), best: res.lines[0].pv[0], pv: res.lines[0].pv };
+  const note = coachNote(fenAt(i), mv, prev, A);
+  G.coachCls[i] = note.cls;
+  if (['inaccuracy', 'mistake', 'blunder'].includes(note.cls) || note.cls === 'best' && Math.random() < 0.35) {
+    G.coachMsg = { ply: i + 1, cls: note.cls, text: note.text };
+  }
+  renderMoves();
+  renderCoach();
 }
 
 function finishBot(result, why) {
   if (!G.live) return;
   G.live = false;
+  G.premove = null;
   if (G.clock) { G.clock[G.clock.turn] = clockMs(G.clock.turn); G.clock.running = false; }
   G.result = result;
   const won = (result === '1-0' && G.myColor === 'w') || (result === '0-1' && G.myColor === 'b');
-  G.status = `${why} · ${result === '1/2-1/2' ? 'Draw' : won ? 'You won' : `${botName(G.bot.elo)} won`}`;
+  const drawn = result === '1/2-1/2';
+  G.status = `${why} · ${drawn ? 'Draw' : won ? 'You won' : `${G.bot.name} won`}`;
+  const before = bots.myRating();
+  const after = bots.updateRating(G.bot.elo, drawn ? 0.5 : won ? 1 : 0);
+  G.status += ` · your level ${before} → ${after}`;
+  snd.play(drawn ? 'end' : won ? 'win' : 'lose');
+  botSay(drawn ? 'draw' : won ? 'lose' : 'win');
   engine?.stop();
   saveGame('bot');
   render();
+  renderBots();
 }
 
 /* ── history ─────────────────────────────────────────────────── */
@@ -485,8 +605,8 @@ function loadGameInto(entry, { review = false } = {}) {
     white: entry.white || { name: 'White' }, black: entry.black || { name: 'Black' },
     result: entry.result && entry.result !== '*' ? entry.result : null, status: entry.status || '',
     live: false, myColor: entry.myColor || null, clock: null,
-    review: entry.review && entry.review.evals?.length === moves.length + 1 ? entry.review : null,
-    historyId: entry.id || null, bot: null, online: null,
+    review: entry.review?.v === 2 && entry.review.evals?.length === moves.length + 1 ? entry.review : null,
+    historyId: entry.id || null, bot: null, online: null, coachCls: [], coachMsg: null, speech: null, premove: null, retry: null,
   });
   G.orientation = entry.myColor === 'b' ? 'black' : 'white';
   showTab('analyze', true);
@@ -522,7 +642,7 @@ let analysedFen = null;
 let cloud = null; // { fen, data }
 let reviewRun = null;
 
-const analysisAllowed = () => !G.live;
+const analysisAllowed = () => !G.live && G.mode !== 'learn';
 
 function stopAnalysis() {
   analysedFen = null;
@@ -568,8 +688,8 @@ function currentArrows() {
   if (G.review && G.cursor > 0) {
     const i = G.cursor - 1;
     const best = G.review.best[i];
-    if (best && ['inaccuracy', 'mistake', 'blunder'].includes(G.review.cls[i])) {
-      arrows.push({ from: best.slice(0, 2), to: best.slice(2, 4), color: 'rgba(56,139,253,.85)' });
+    if (best && !G.retry && ['inaccuracy', 'mistake', 'blunder', 'miss', 'good', 'excellent'].includes(G.review.cls[i])) {
+      arrows.push({ from: best.slice(0, 2), to: best.slice(2, 4), color: 'rgba(129,182,76,.9)' });
     }
   }
   if (engineOn && analysisAllowed() && liveLines && liveLines.fen === fen && liveLines.lines) {
@@ -623,7 +743,22 @@ function renderEngineCard() {
     } else $('#cloud').textContent = '';
   }
   renderReviewOut();
+  renderBook();
 }
+
+// Opening explorer: named book continuations from the current position.
+function renderBook() {
+  const el = $('#book');
+  if (!el || G.mode !== 'analysis') return;
+  const fen = curFen();
+  const cont = book.continuations(fen);
+  if (!cont.length) { el.innerHTML = `<p class="muted small">${book.nameOf(fen) ? `${esc(book.nameOf(fen).name)}: end of the named lines.` : 'Out of the opening book.'}</p>`; return; }
+  el.innerHTML = cont.slice(0, 20).map((c) => `<button data-bk="${c.uci}"><b>${esc(playUci(fen, c.uci)?.san || c.uci)}</b><span>${esc(c.name ? `${c.name.eco} ${c.name.name}` : '')}</span></button>`).join('');
+}
+$('#book').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-bk]');
+  if (b) userMove({ from: b.dataset.bk.slice(0, 2), to: b.dataset.bk.slice(2, 4), promotion: b.dataset.bk[4] });
+});
 
 $('#lines').addEventListener('click', (e) => {
   const b = e.target.closest('[data-line]');
@@ -632,47 +767,33 @@ $('#lines').addEventListener('click', (e) => {
   if (u) userMove({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] });
 });
 
-/* ── full game review ────────────────────────────────────────── */
-// Lichess's formulas: win% from centipawns, accuracy from the win% a move
-// gave away, and inaccuracy/mistake/blunder at 5/10/15 points of win%.
-function classify(before, after, mover, playedUci, bestUci) {
-  const sign = mover === 'w' ? 1 : -1;
-  const wb = sign > 0 ? winPct(before) : 100 - winPct(before);
-  const wa = sign > 0 ? winPct(after) : 100 - winPct(after);
-  const drop = Math.max(0, wb - wa);
-  const acc = Math.max(0, Math.min(100, 103.1668 * Math.exp(-0.04354 * drop) - 3.1669));
-  let cls = 'good';
-  if (playedUci === bestUci) cls = 'best';
-  else if (drop >= 15) cls = 'blunder';
-  else if (drop >= 10) cls = 'mistake';
-  else if (drop >= 5) cls = 'inaccuracy';
-  const cp = (ev) => (ev.mate != null ? (ev.mate > 0 ? 1000 : -1000) : Math.max(-1000, Math.min(1000, ev.cp)));
-  const loss = Math.max(0, sign * (cp(before) - cp(after)));
-  return { cls, acc, loss };
-}
-
+/* ── Game Review ─────────────────────────────────────────────── */
 async function runReview() {
   if (reviewRun) { reviewRun.cancel = true; engine?.stop(); return; }
   if (!G.moves.length) return toast('Make or load some moves first.');
   const depth = Number(settings.reviewDepth);
   const run = { cancel: false, done: 0, total: G.moves.length + 1, moves: G.moves };
   reviewRun = run;
+  G.retry = null;
   analysedFen = null;
   render();
-  const evals = [];
-  const best = [];
+  const positions = [];
   try {
     const eng = getEngine();
+    book.load().catch(() => {});
     for (let p = 0; p <= run.moves.length; p++) {
       if (run.cancel || G.moves !== run.moves) { run.cancel = true; break; }
       const fen = fenAt(p);
       const term = terminalEval(fen);
-      if (term) { evals[p] = term; best[p] = null; }
+      if (term) positions[p] = { eval: term, best: null, pv: [], second: null };
       else {
-        const res = await eng.search(fen, { depth, multipv: 1, hash: 64 });
+        const res = await eng.search(fen, { depth, multipv: 2, hash: 64 });
         if (!res || run.cancel) { run.cancel = true; break; }
-        evals[p] = res.lines[0] ? whiteEval(res.lines[0], fen) : { cp: 0 };
-        best[p] = res.best;
+        const [a, b] = res.lines;
+        positions[p] = {
+          eval: a ? whiteEval(a, fen) : { cp: 0 }, best: res.best, pv: a?.pv || [],
+          second: b?.pv?.[0] ? { eval: whiteEval(b, fen), uci: b.pv[0] } : null,
+        };
       }
       run.done = p + 1;
       renderReviewOut();
@@ -683,73 +804,108 @@ async function runReview() {
   }
   reviewRun = null;
   if (run.cancel || G.moves !== run.moves) { render(); analyse(); return; }
-  const cls = [];
-  const accs = { w: [], b: [] };
-  const losses = { w: [], b: [] };
-  G.moves.forEach((m, i) => {
-    const mover = turnOf(fenAt(i));
-    const r = classify(evals[i], evals[i + 1], mover, m.uci, best[i]);
-    cls.push(r.cls);
-    accs[mover].push(r.acc);
-    losses[mover].push(r.loss);
-  });
-  const gameAcc = (a) => {
-    if (!a.length) return 100;
-    const mean = a.reduce((s, x) => s + x, 0) / a.length;
-    const harm = a.length / a.reduce((s, x) => s + 1 / Math.max(x, 1), 0);
-    return (mean + harm) / 2;
-  };
-  const avg = (a) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0);
-  G.review = { depth, evals, best, cls, acc: { w: gameAcc(accs.w), b: gameAcc(accs.b) }, acpl: { w: avg(losses.w), b: avg(losses.b) } };
+  await book.load().catch(() => {});
+  G.review = buildReview({ startFen: G.startFen, moves: G.moves, positions, depth, isBook: (f) => book.inBook(f), openingOf: (fens) => book.gameOpening(fens) });
   saveGame(history.find((h) => h.id === G.historyId)?.source || 'analysis');
+  snd.play('notify');
   render();
   analyse();
 }
 
 function renderReviewOut() {
   const out = $('#reviewOut');
-  $('#reviewBtn').textContent = reviewRun ? 'Stop review' : G.review ? 'Re-run review' : 'Full game review';
+  $('#reviewBtn').textContent = reviewRun ? 'Stop review' : G.review ? 'Re-run review' : 'Game Review';
   if (reviewRun) {
     const pct = Math.round((reviewRun.done / reviewRun.total) * 100);
-    out.innerHTML = `<div class="progress"><div style="width:${pct}%"></div></div><p class="muted small">Analysing position ${reviewRun.done} of ${reviewRun.total} at depth ${esc(settings.reviewDepth)}…</p>`;
+    out.innerHTML = `<h3>Game Review</h3><div class="progress"><div style="width:${pct}%"></div></div><p class="muted small">Checking every move with Stockfish: position ${reviewRun.done} of ${reviewRun.total}…</p>`;
     return;
   }
   const r = G.review;
-  if (!r) { out.innerHTML = ''; return; }
-  const count = (color, c) => r.cls.filter((x, i) => x === c && turnOf(fenAt(i)) === color).length;
-  const rows = ['best', 'good', 'inaccuracy', 'mistake', 'blunder'].map((c) => `<tr class="${c}"><td>${count('w', c)}</td><th>${c[0].toUpperCase() + c.slice(1)}${CLS_MARK[c] ? ` ${CLS_MARK[c]}` : ''}</th><td>${count('b', c)}</td></tr>`).join('');
+  if (!r) {
+    out.innerHTML = G.moves.length ? '<h3>Game Review</h3><p class="muted small">Get your accuracy, every move graded from brilliant to blunder, and plain-English explanations of what went wrong.</p>' : '';
+    return;
+  }
+  const side = (i) => turnOf(fenAt(i));
+  const count = (color, c) => r.cls.filter((x, i) => x === c && side(i) === color).length;
+  const rows = ORDER.map((c) => { const w = count('w', c), b = count('b', c); return `<tr class="${w + b ? '' : 'zero'}"><td>${w}</td><th>${badgeSvg(c, 18)}${CLASSES[c].label}</th><td>${b}</td></tr>`; }).join('');
   const i = G.cursor - 1;
-  const hint = i >= 0 && ['inaccuracy', 'mistake', 'blunder'].includes(r.cls[i]) && r.best[i]
-    ? `<p class="hint">${esc(G.moves[i].san)} was ${r.cls[i] === 'inaccuracy' ? 'an' : 'a'} ${r.cls[i]}. Best was <b>${esc(playUci(fenAt(i), r.best[i])?.san || r.best[i])}</b> (blue arrow).</p>`
-    : '';
+  const c = i >= 0 ? r.cls[i] : null;
+  const note = i >= 0 && c ? `<div class="rv-note" style="--c:${CLASSES[c].color}">${badgeSvg(c, 24)}<p>${esc(r.notes?.[i] || '')}</p></div>` : '<p class="muted small">Step through the game with ← → or click any move. Each move gets a badge and an explanation.</p>';
+  const canRetry = i >= 0 && ['inaccuracy', 'mistake', 'blunder', 'miss'].includes(c) && r.best[i];
+  const showBest = i >= 0 && r.best[i] && r.best[i] !== G.moves[i].uci;
+  const moments = (r.moments || []).map((ply) => `<button data-ply="${ply}">${badgeSvg(r.cls[ply - 1], 16)}${Math.ceil(ply / 2)}${side(ply - 1) === 'w' ? '.' : '…'} ${esc(G.moves[ply - 1]?.san || '')}</button>`).join('');
   out.innerHTML = `
+    <h3>Game Review${r.opening ? ` <span class="muted small">· ${esc(r.opening.name)}</span>` : ''}</h3>
+    <div class="rv-head"><div class="rv-acc w"><b>${r.acc.w.toFixed(1)}</b><span>${esc(G.white.name)}</span></div><span class="rv-mid">Accuracy</span><div class="rv-acc b"><b>${r.acc.b.toFixed(1)}</b><span>${esc(G.black.name)}</span></div></div>
     ${graphSvg(r)}
-    ${hint}
-    <table class="rtable">
-      <tr><td class="big">${r.acc.w.toFixed(1)}%</td><th>Accuracy</th><td class="big">${r.acc.b.toFixed(1)}%</td></tr>
-      <tr><td>${r.acpl.w.toFixed(0)}</td><th>Avg. centipawn loss</th><td>${r.acpl.b.toFixed(0)}</td></tr>
-      ${rows}
-    </table>
-    <p class="muted small">White left, Black right · depth ${esc(r.depth)} · click the graph to jump.</p>`;
+    ${note}
+    <div class="rv-btns">${canRetry ? '<button class="btn primary" data-rv="retry">Retry this move</button>' : ''}${showBest ? '<button class="btn" data-rv="line">Show best line</button>' : ''}<button class="btn" data-rv="next">Next mistake →</button></div>
+    ${moments ? `<p class="muted small">Key moments</p><div class="rv-moments">${moments}</div>` : ''}
+    <table class="rv-counts">${rows}</table>
+    <p class="muted small">Depth ${esc(r.depth)} · average loss ${r.acpl.w.toFixed(0)} / ${r.acpl.b.toFixed(0)} centipawns.</p>`;
 }
 
 function graphSvg(r) {
   const W = 300; const H = 70; const n = r.evals.length - 1 || 1;
   const y = (ev) => (H - (winPct(ev) / 100) * H).toFixed(1);
   const pts = r.evals.map((ev, i) => `${((i / n) * W).toFixed(1)},${y(ev)}`);
-  const marks = r.cls.map((c, i) => (['mistake', 'blunder'].includes(c) ? `<circle cx="${(((i + 1) / n) * W).toFixed(1)}" cy="${y(r.evals[i + 1])}" r="2.6" class="${c}"/>` : '')).join('');
+  const marks = r.cls.map((c, i) => (['mistake', 'blunder', 'miss', 'brilliant', 'great'].includes(c) ? `<circle cx="${(((i + 1) / n) * W).toFixed(1)}" cy="${y(r.evals[i + 1])}" r="3" fill="${CLASSES[c].color}"/>` : '')).join('');
   const cx = ((G.cursor / n) * W).toFixed(1);
-  return `<svg class="graph" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><rect width="${W}" height="${H}" class="bg"/><path d="M0,${H} L${pts.join(' L')} L${W},${H} Z" class="area"/><line x1="0" x2="${W}" y1="${H / 2}" y2="${H / 2}" class="mid"/><line x1="${cx}" x2="${cx}" y1="0" y2="${H}" class="cur"/>${marks}</svg>`;
+  return `<svg class="graph" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-label="Evaluation graph"><rect width="${W}" height="${H}" class="bg"/><path d="M0,${H} L${pts.join(' L')} L${W},${H} Z" class="area"/><line x1="0" x2="${W}" y1="${H / 2}" y2="${H / 2}" class="mid"/><line x1="${cx}" x2="${cx}" y1="0" y2="${H}" class="cur"/>${marks}</svg>`;
 }
 $('#reviewOut').addEventListener('click', (e) => {
   const svg = e.target.closest('svg.graph');
-  if (!svg || !G.review) return;
-  const r = svg.getBoundingClientRect();
-  goto(Math.round(((e.clientX - r.left) / r.width) * (G.review.evals.length - 1)));
+  if (svg && G.review) {
+    const r = svg.getBoundingClientRect();
+    goto(Math.round(((e.clientX - r.left) / r.width) * (G.review.evals.length - 1)));
+    return;
+  }
+  const ply = e.target.closest('[data-ply]');
+  if (ply) { goto(Number(ply.dataset.ply)); return; }
+  const a = e.target.closest('[data-rv]')?.dataset.rv;
+  if (!a || !G.review) return;
+  const i = G.cursor - 1;
+  if (a === 'retry') {
+    G.retry = { ply: i, best: G.review.best[i], second: G.review.second?.[i] };
+    G.cursor = i;
+    G.status = `Retry: find a better move for ${turnOf(fenAt(i)) === 'w' ? 'White' : 'Black'}.`;
+    render();
+  } else if (a === 'line') playBestLine(i);
+  else if (a === 'next') {
+    const bad = ['inaccuracy', 'mistake', 'blunder', 'miss'];
+    const mine = G.myColor;
+    let k = G.review.cls.findIndex((c, x) => x > i && bad.includes(c) && (!mine || turnOf(fenAt(x)) === mine));
+    if (k < 0) k = G.review.cls.findIndex((c, x) => bad.includes(c) && (!mine || turnOf(fenAt(x)) === mine));
+    if (k < 0) toast('No mistakes to show. Clean game!'); else goto(k + 1);
+  }
 });
+
+// Animates the engine's best line from the position before move i, then returns.
+let lineTimer = null;
+function playBestLine(i) {
+  clearTimeout(lineTimer);
+  const pv = (G.review.pv?.[i] || [G.review.best[i]]).slice(0, 8);
+  let fen = fenAt(i);
+  const steps = [];
+  for (const u of pv) { const r = playUci(fen, u); if (!r) break; steps.push(r); fen = r.fen; }
+  let k = 0;
+  const back = G.cursor;
+  const tick = () => {
+    if (k >= steps.length) { lineTimer = setTimeout(() => { G.status = ''; goto(back); }, 1200); return; }
+    const r = steps[k++];
+    soundFor(r);
+    board.set({ fen: r.fen, lastMove: [r.from, r.to], arrows: [], badge: null, movable: false });
+    G.status = `Best line: ${steps.slice(0, k).map((x) => x.san).join(' ')}`;
+    $('#status').textContent = G.status;
+    lineTimer = setTimeout(tick, 750);
+  };
+  tick();
+}
 
 /* ── navigation ──────────────────────────────────────────────── */
 function goto(ply) {
+  if (G.retry) { G.retry = null; G.status = ''; }
+  clearTimeout(lineTimer);
   G.cursor = Math.max(0, Math.min(G.moves.length, ply));
   afterNav();
 }
@@ -772,13 +928,33 @@ $('#moves').addEventListener('click', (e) => {
   const b = e.target.closest('[data-ply]');
   if (b) goto(Number(b.dataset.ply));
 });
+// Swipe left/right (touch) to step through moves. On the board itself only
+// when it is not your move, so dragging pieces never fights the swipe.
+(() => {
+  let sx = 0, sy = 0, ok = false;
+  const col = document.querySelector('.board-col');
+  col.addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    sx = t.clientX; sy = t.clientY;
+    ok = e.touches.length === 1 && (!e.target.closest('#board') || !canMove()) && G.mode !== 'learn';
+  }, { passive: true });
+  col.addEventListener('touchend', (e) => {
+    if (!ok) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - sx, dy = t.clientY - sy;
+    if (Math.abs(dx) > 50 && Math.abs(dy) < 40) goto(G.cursor + (dx < 0 ? 1 : -1));
+  }, { passive: true });
+})();
+
 document.addEventListener('keydown', (e) => {
-  if (e.target.closest('input, textarea, select')) return;
+  if (e.target.closest('input, textarea, select, [contenteditable]') || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (document.querySelector('dialog[open]')) return;
+  if (G.mode === 'learn') return;
   if (e.key === 'ArrowLeft') goto(G.cursor - 1);
   else if (e.key === 'ArrowRight') goto(G.cursor + 1);
   else if (e.key === 'ArrowUp' || e.key === 'Home') goto(0);
   else if (e.key === 'ArrowDown' || e.key === 'End') goto(G.moves.length);
-  else if (e.key === 'f') flip();
+  else if (e.key === 'f' || e.key === 'F') flip();
   else return;
   e.preventDefault();
 });
@@ -805,7 +981,7 @@ $('#actions').addEventListener('click', (e) => {
       if (turnOf(lastFen()) !== G.myColor) botReply();
       break;
     }
-    case 'rematch': startBot(G.bot.elo, G.bot.colorPref, G.bot.clockSpec); break;
+    case 'rematch': startBot(G.bot.id, G.bot.colorPref, G.bot.clockSpec); break;
     case 'analyse': {
       const entry = history.find((h) => h.id === G.historyId) || {
         startFen: G.startFen, ucis: G.moves.map((m) => m.uci), white: G.white, black: G.black, result: G.result, status: G.status, myColor: G.myColor,
@@ -1037,7 +1213,7 @@ function openOnline(id) {
   const { signal } = gameAbort;
   Object.assign(G, {
     mode: 'online', startFen: DEFAULT_POSITION, moves: [], cursor: 0, result: null, status: 'Connecting…',
-    live: true, myColor: null, clock: null, review: null, historyId: null, bot: null,
+    live: true, myColor: null, clock: null, review: null, historyId: null, bot: null, coachCls: [], coachMsg: null, speech: null, premove: null, retry: null,
     white: { name: 'White' }, black: { name: 'Black' },
     online: { id, draw: { w: false, b: false }, takeback: { w: false, b: false }, gone: false, chat: [] },
   });
@@ -1079,15 +1255,15 @@ function applyOnlineState(s) {
   const wasAtEnd = G.cursor === G.moves.length;
   if (!same) G.moves = [];
   let fen = lastFen();
-  let lastCapture = null;
+  let lastR = null;
   for (let i = G.moves.length; i < ucis.length; i++) {
     const r = playUci(fen, ucis[i]);
     if (!r) break;
     G.moves.push(r);
     fen = r.fen;
-    lastCapture = r.captured;
+    lastR = r;
   }
-  if (lastCapture !== null && turnOf(fen) === G.myColor) sound(lastCapture);
+  if (lastR && turnOf(fen) === G.myColor) soundFor(lastR);
   if (wasAtEnd || !same) G.cursor = G.moves.length;
   const started = s.status === 'started' || s.status === 'created';
   G.online.draw = { w: !!s.wdraw, b: !!s.bdraw };
@@ -1109,6 +1285,7 @@ function applyOnlineState(s) {
     refreshPlaying();
   }
   render();
+  if (lastR && started) firePremove();
 }
 
 function stopSeek() {
@@ -1250,22 +1427,24 @@ function newAnalysis(startFen = DEFAULT_POSITION, moves = [], meta = {}) {
   leaveOnline();
   Object.assign(G, {
     mode: 'analysis', startFen, moves, cursor: moves.length, result: meta.result || null, status: '',
-    live: false, myColor: null, clock: null, review: null, historyId: null, bot: null, online: null,
+    live: false, myColor: null, clock: null, review: null, historyId: null, bot: null, online: null, coachCls: [], coachMsg: null, speech: null, premove: null, retry: null,
     white: meta.white || { name: 'White' }, black: meta.black || { name: 'Black' },
   });
   showTab('analyze', true);
   afterNav();
 }
 $('#newBoard').addEventListener('click', () => newAnalysis());
-$('#importBtn').addEventListener('click', () => {
-  const text = $('#importText').value.trim();
-  if (!text) return;
+$('#importBtn').addEventListener('click', () => importText($('#importText').value.trim()));
+// Loads a FEN or PGN into the analysis board. Returns true on success.
+function importText(text, extra = {}) {
+  if (!text) return false;
   if (/^[1-8pnbrqkPNBRQK/]+ [wb] /.test(text)) {
-    try { new Chess(text); } catch (e) { return toast(`Bad FEN: ${e.message}`); }
-    return newAnalysis(text);
+    try { new Chess(text); } catch (e) { toast(`Bad FEN: ${e.message}`); return false; }
+    newAnalysis(text);
+    return true;
   }
   const c = new Chess();
-  try { c.loadPgn(text); } catch (e) { return toast(`Couldn't read that PGN: ${e.message}`); }
+  try { c.loadPgn(text); } catch (e) { toast(`Couldn't read that PGN: ${e.message}`); return false; }
   const h = c.getHeaders();
   const startFen = h.FEN || DEFAULT_POSITION;
   const moves = [];
@@ -1280,7 +1459,40 @@ $('#importBtn').addEventListener('click', () => {
     white: { name: h.White || 'White', rating: h.WhiteElo }, black: { name: h.Black || 'Black', rating: h.BlackElo },
     result: h.Result && h.Result !== '*' ? h.Result : null,
   });
-});
+  if (extra.myColor) { G.myColor = extra.myColor; G.orientation = extra.myColor === 'b' ? 'black' : 'white'; }
+  if (h.Site || extra.source) saveGame(extra.source || 'import', { lichessId: extra.lichessId });
+  render();
+  return true;
+}
+
+// Links from the browser extension (and anywhere else):
+//   chess/#review=<base64url of a UTF-8 PGN>   chess/#lichess=<game id>
+function decodeB64url(s) {
+  const b = atob(s.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(s.length / 4) * 4, '='));
+  return new TextDecoder().decode(Uint8Array.from(b, (ch) => ch.charCodeAt(0)));
+}
+async function openImportLink(hash) {
+  let pgn = null, lichessId = null;
+  try {
+    if (hash.startsWith('#review=')) pgn = decodeB64url(hash.slice(8));
+    else if (hash.startsWith('#lichess=')) {
+      lichessId = hash.slice(9).replace(/[^A-Za-z0-9]/g, '').slice(0, 8);
+      const res = await fetch(`${li.HOST}/game/export/${lichessId}?clocks=false&evals=false`, { headers: { Accept: 'application/x-chess-pgn' } });
+      if (!res.ok) throw new Error(`Lichess couldn't find game ${lichessId} (${res.status})`);
+      pgn = await res.text();
+    }
+  } catch (e) { toast(`Couldn't open that game: ${e.message}`, 6000); return false; }
+  window.history.replaceState(null, '', '#analyze');
+  const existing = lichessId && historyList().find((h) => h.lichessId === lichessId);
+  engineOn = true;
+  $('#engOn').checked = true;
+  if (existing?.review) { loadGameInto(existing); return true; }
+  if (!importText(pgn, { source: lichessId ? 'lichess' : 'import', lichessId })) return false;
+  // Review from the side of whoever imported it, if the PGN says.
+  runReview();
+  return true;
+}
+const historyList = () => history;
 function toPgn() {
   const c = new Chess(G.startFen);
   c.setHeader('White', G.white.name || 'White');
@@ -1323,26 +1535,91 @@ $('#reviewBtn').addEventListener('click', runReview);
 
 /* ── bot panel ───────────────────────────────────────────────── */
 function renderBots() {
-  $('#bots').innerHTML = BOTS.map((b) => `<button class="bot ${settings.elo === b.elo ? 'on' : ''}" data-elo="${b.elo}"><b>${esc(b.name)}</b><span>${b.elo}</span><small>${esc(b.blurb)}</small></button>`).join('');
+  const all = [...bots.BOTS, botFor('match')];
+  $('#bots').innerHTML = all.map((b) => `<button class="bot ${settings.botId === b.id ? 'on' : ''}" data-bot="${b.id}" title="${esc(b.name)} · ${b.elo}">${bots.avatar(b, 44)}<b>${esc(b.name)}</b><small>${b.id === 'match' ? 'You' : b.elo}</small></button>`).join('');
+  const b = botFor(settings.botId, settings.elo);
+  const styleTag = { wild: 'Chaotic', cautious: 'Cautious', aggressive: 'Attacker', solid: 'Solid', positional: 'Positional', universal: 'All-rounder', engine: 'Engine' }[b.style];
+  $('#botCard').innerHTML = `${bots.avatar(b, 56)}<div><b>${esc(b.name)}</b> <span class="muted">${b.elo}</span><p>${esc(b.bio)}</p><div class="tags">${styleTag ? `<span class="ar-chip">${styleTag}</span>` : ''}${(b.book || []).slice(0, 2).map((o) => `<span class="ar-chip">${esc(o.split(':')[0])}</span>`).join('')}</div></div>`;
   $('#elo').value = settings.elo;
-  $('#eloOut').textContent = `${settings.elo} · ${botName(settings.elo)}`;
+  $('#eloOut').textContent = `${settings.elo}`;
+  $('#coachOn').checked = settings.coach;
 }
 $('#bots').addEventListener('click', (e) => {
-  const b = e.target.closest('[data-elo]');
+  const b = e.target.closest('[data-bot]');
   if (!b) return;
-  settings.elo = Number(b.dataset.elo);
+  settings.botId = b.dataset.bot;
   saveSettings();
   renderBots();
 });
 $('#elo').addEventListener('input', (e) => {
   settings.elo = Number(e.target.value);
+  settings.botId = 'custom';
   saveSettings();
   renderBots();
 });
-$('#botStart').addEventListener('click', () => startBot(settings.elo, $('#botColor').value, $('#botClock').value));
+$('#coachOn').addEventListener('change', (e) => { settings.coach = e.target.checked; saveSettings(); renderCoach(); });
+$('#botStart').addEventListener('click', () => startBot(settings.botId, $('#botColor').value, $('#botClock').value));
+
+/* ── learn ───────────────────────────────────────────────────── */
+const learn = createLearn({
+  panel: $('#learnPanel'),
+  setPos(patch) {
+    if ('fen' in patch && !('arrows' in patch)) patch.arrows = [];
+    Object.assign(G.lp, patch);
+    render();
+    if (patch.marks) { board.shapes.marks = { ...patch.marks }; board.render(false); }
+  },
+  sound: (k) => snd.play(k),
+  toast,
+});
+G.learn = learn;
+book.load().then(() => { if (G.mode !== 'learn') render(); }).catch(() => {});
+
+/* ── settings dialog ─────────────────────────────────────────── */
+const THEMES = { kinetix: ['#ece7ff', '#8c76db'], meadow: ['#e8edd0', '#6f9a55'], wood: ['#f0d9b5', '#b58863'], ice: ['#dee3e6', '#8ca2ad'], coral: ['#f6e4d7', '#d47f6b'], midnight: ['#6b738c', '#343a4f'], mono: ['#dcdcdc', '#929292'] };
+function applyLook() {
+  document.body.dataset.board = settings.board;
+  document.body.classList.toggle('nocoords', !settings.coords);
+  document.body.classList.toggle('noanim', !settings.anim);
+  board.setPieceSet(settings.pieces);
+  snd.setSound(settings.sound);
+}
+function renderSettings() {
+  $('#themeList').innerHTML = Object.entries(THEMES).map(([k, [a, b]]) => `<button type="button" data-theme-k="${k}" class="${settings.board === k ? 'on' : ''}" style="--a:${a};--b:${b}" aria-label="${k} board" title="${k[0].toUpperCase() + k.slice(1)}"></button>`).join('');
+  $('#pieceList').innerHTML = Object.entries(PIECE_SETS).map(([k, label]) => `<button type="button" data-piece-k="${k}" class="${settings.pieces === k ? 'on' : ''}" style="background-image:url(vendor/pieces/${k}/wN.svg)" aria-label="${label} pieces" title="${label}"></button>`).join('');
+  $('#soundOn').checked = settings.sound;
+  $('#coordsOn').checked = settings.coords;
+  $('#animOn').checked = settings.anim;
+  $('#premoveOn').checked = settings.premove;
+}
+$('#setBtn').addEventListener('click', () => { renderSettings(); $('#setDialog').showModal(); });
+$('#setDialog').addEventListener('click', (e) => {
+  const t = e.target.closest('[data-theme-k]'); const pc = e.target.closest('[data-piece-k]');
+  if (t) settings.board = t.dataset.themeK;
+  else if (pc) settings.pieces = pc.dataset.pieceK;
+  else return;
+  saveSettings(); applyLook(); renderSettings();
+});
+for (const [id, key] of [['#soundOn', 'sound'], ['#coordsOn', 'coords'], ['#animOn', 'anim'], ['#premoveOn', 'premove']]) {
+  $(id).addEventListener('change', (e) => { settings[key] = e.target.checked; saveSettings(); applyLook(); if (key === 'sound' && e.target.checked) snd.play('move'); });
+}
+applyLook();
+$('#premoveOn').checked = settings.premove;
+window.ArcadeTheme?.mount($('#themeBtn'));
 
 /* ── tabs ────────────────────────────────────────────────────── */
 function showTab(name, keepGame) {
+  if (name === 'learn' && G.live) { toast('Finish or resign your game first.'); name = G.mode === 'online' ? 'online' : 'play'; }
+  if (name === 'learn' && G.mode !== 'learn') {
+    stopAnalysis(); leaveOnline();
+    G.mode = 'learn'; G.review = null; G.retry = null;
+    G.lp = { fen: DEFAULT_POSITION, orientation: 'white', lastMove: null, movable: false, arrows: [] };
+    learn.home();
+  } else if (name !== 'learn' && G.mode === 'learn') {
+    learn.stop();
+    Object.assign(G, { mode: 'analysis', startFen: DEFAULT_POSITION, moves: [], cursor: 0, result: null, status: '', live: false, myColor: null, clock: null, review: null, historyId: null, bot: null, online: null, white: { name: 'White' }, black: { name: 'Black' } });
+    render();
+  }
   document.querySelectorAll('.tabs [data-tab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
   document.querySelectorAll('.panel').forEach((p) => { p.hidden = p.dataset.panel !== name; });
   if (location.hash !== `#${name}`) window.history.replaceState(null, '', `#${name}`);
@@ -1364,9 +1641,16 @@ document.querySelector('.tabs').addEventListener('click', (e) => {
   freshLogin = !!li.token && li.token !== before;
   if (err) toast(`Lichess login failed: ${err}`, 6000);
   const after = sessionStorage.getItem('arc.chess.afterLogin');
+  window.addEventListener('hashchange', () => { const h = location.hash; if (h.startsWith('#review=') || h.startsWith('#lichess=')) { showTab('analyze', true); openImportLink(h); } });
   sessionStorage.removeItem('arc.chess.afterLogin');
-  const tab = after || location.hash.slice(1);
-  showTab(['play', 'online', 'analyze', 'games'].includes(tab) ? tab : 'play');
+  const hash = location.hash;
+  if (hash.startsWith('#review=') || hash.startsWith('#lichess=')) {
+    showTab('analyze', true);
+    await openImportLink(hash);
+  } else {
+    const tab = after || hash.slice(1);
+    showTab(['play', 'online', 'learn', 'analyze', 'games'].includes(tab) ? tab : 'play');
+  }
   render();
   refreshAccount();
 })();

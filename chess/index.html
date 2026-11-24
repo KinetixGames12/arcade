@@ -5,22 +5,31 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 <meta name="referrer" content="no-referrer">
-<meta name="theme-color" content="#0d1117">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://lichess.org https://unpkg.com https://ajnzimwmykqgflymjoun.supabase.co; worker-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta name="theme-color" content="#08070f">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://lichess.org https://explorer.lichess.ovh https://unpkg.com https://ajnzimwmykqgflymjoun.supabase.co; worker-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <title>Chess · Kinetix</title>
 <link rel="icon" type="image/svg+xml" href="../shared/icon.svg?v=3">
-<link rel="stylesheet" href="../shared/account.css?v=1">
-<link rel="stylesheet" href="style.css?v=2">
+<link rel="apple-touch-icon" href="../shared/brand/apple-touch-icon.png">
+<link rel="stylesheet" href="../shared/arcade.css?v=2">
+<link rel="stylesheet" href="../shared/account.css?v=2">
+<link rel="stylesheet" href="style.css?v=4">
+<script src="../shared/theme.js?v=1"></script>
 </head>
 <body>
-<header class="top">
-  <a class="brand" href="../" aria-label="Back to Kinetix"><img src="../shared/icon.svg?v=3" alt=""><span>Kinetix <b>Chess</b></span></a>
-  <nav class="tabs" role="tablist">
-    <button role="tab" data-tab="play">Bots</button>
-    <button role="tab" data-tab="online">Lichess</button>
+<header class="ar-topbar ch-top">
+  <a class="ar-brand" href="../" aria-label="Back to Kinetix"><img src="../shared/icon.svg?v=3" alt=""><span class="ar-wordmark">Kinetix <b>Chess</b></span></a>
+  <nav class="ar-tabs tabs" role="tablist" aria-label="Chess sections">
+    <button role="tab" data-tab="play">Play</button>
+    <button role="tab" data-tab="online">Online</button>
+    <button role="tab" data-tab="learn">Learn</button>
     <button role="tab" data-tab="analyze">Analysis</button>
     <button role="tab" data-tab="games">Games</button>
   </nav>
+  <span class="ar-spacer"></span>
+  <button class="ar-icon-btn" id="setBtn" aria-label="Board settings" title="Board, pieces and sound">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>
+  </button>
+  <span id="themeBtn"></span>
   <div class="acct" id="acct"></div>
   <div id="hubAcct"></div>
 </header>
@@ -33,43 +42,46 @@
       <div id="board"></div>
     </div>
     <div class="player" id="pBot"></div>
-    <div class="navbtns">
-      <button data-nav="start" aria-label="First move">⏮</button>
-      <button data-nav="prev" aria-label="Previous move">◀</button>
-      <button data-nav="next" aria-label="Next move">▶</button>
-      <button data-nav="end" aria-label="Last move">⏭</button>
-      <button data-nav="flip" aria-label="Flip board">⇅</button>
+    <div class="navbtns" aria-label="Move navigation">
+      <button data-nav="start" aria-label="First move" title="First (↑ / Home)">⏮</button>
+      <button data-nav="prev" aria-label="Previous move" title="Back (←)">◀</button>
+      <button data-nav="next" aria-label="Next move" title="Forward (→)">▶</button>
+      <button data-nav="end" aria-label="Last move" title="Last (↓ / End)">⏭</button>
+      <button data-nav="flip" aria-label="Flip board" title="Flip (F)">⇅</button>
     </div>
   </section>
 
   <aside class="side">
     <div class="panel" data-panel="play">
-      <h2>Play a bot</h2>
-      <p class="muted">Stockfish 19 running on your device, tuned to the strength you pick.</p>
+      <div class="ph"><h2 class="ar-display">Play a bot</h2><p class="muted">Characters from beginner to full Stockfish, each with their own style and openings.</p></div>
       <div class="bots" id="bots"></div>
-      <label class="row">Strength <output id="eloOut"></output></label>
-      <input type="range" id="elo" min="400" max="3200" step="50">
+      <div class="botcard" id="botCard"></div>
       <div class="row gap">
-        <label>Colour
-          <select id="botColor"><option value="w">White</option><option value="b">Black</option><option value="r" selected>Random</option></select>
+        <label class="ar-field">Colour
+          <select id="botColor" class="ar-select"><option value="w">White</option><option value="b">Black</option><option value="r" selected>Random</option></select>
         </label>
-        <label>Clock
-          <select id="botClock">
+        <label class="ar-field">Clock
+          <select id="botClock" class="ar-select">
             <option value="0">Untimed</option><option value="3+2">3+2</option><option value="5+3">5+3</option>
             <option value="10+0">10+0</option><option value="15+10">15+10</option><option value="30+0">30+0</option>
           </select>
         </label>
       </div>
-      <button class="primary wide" id="botStart">Play</button>
+      <details class="custom"><summary>Custom strength</summary>
+        <label class="row">Elo <output id="eloOut"></output></label>
+        <input type="range" id="elo" min="400" max="3200" step="50">
+      </details>
+      <label class="check"><input type="checkbox" id="coachOn"> Coach comments on my moves</label>
+      <button class="ar-btn lg wide" id="botStart">Play</button>
     </div>
 
     <div class="panel" data-panel="online">
       <p class="muted small sync" id="syncNote"></p>
       <div id="liOut">
-        <h2>Play on Lichess</h2>
+        <h2 class="ar-display">Play on Lichess</h2>
         <p class="muted">Connect your Lichess account to play real people and the Lichess AI from here. Your games happen on Lichess and count on your Lichess rating.</p>
-        <button class="primary wide" id="liLogin">Connect Lichess account</button>
-        <p class="muted small">No password goes through this site — you sign in on lichess.org and it hands back a play-only key.</p>
+        <button class="ar-btn lg wide" id="liLogin">Connect Lichess account</button>
+        <p class="muted small">No password goes through this site: you sign in on lichess.org and it hands back a play-only key.</p>
       </div>
       <div id="liIn" hidden>
         <h3>Quick pairing</h3>
@@ -78,44 +90,48 @@
         <div id="seekStatus" class="notice" hidden></div>
         <h3>Challenge a friend</h3>
         <div class="row gap">
-          <input id="chUser" placeholder="Lichess username" autocomplete="off" spellcheck="false">
-          <select id="chTc"></select>
+          <input id="chUser" class="ar-input" placeholder="Lichess username" autocomplete="off" spellcheck="false">
+          <select id="chTc" class="ar-select"></select>
         </div>
         <div class="row gap">
-          <select id="chColor"><option value="random">Random colour</option><option value="white">White</option><option value="black">Black</option></select>
+          <select id="chColor" class="ar-select"><option value="random">Random colour</option><option value="white">White</option><option value="black">Black</option></select>
           <label class="check"><input type="checkbox" id="chRated"> Rated</label>
-          <button id="chSend">Send</button>
+          <button class="btn" id="chSend">Send</button>
         </div>
         <h3>Lichess AI</h3>
         <div class="row gap">
           <label>Level <output id="aiOut">4</output></label>
           <input type="range" id="aiLevel" min="1" max="8" value="4">
-          <select id="aiTc"></select>
-          <button id="aiStart">Play</button>
+          <select id="aiTc" class="ar-select"></select>
+          <button class="btn" id="aiStart">Play</button>
         </div>
+        <label class="check"><input type="checkbox" id="premoveOn"> Premoves (queue your next move on their turn)</label>
         <div id="incoming"></div>
         <h3>Your ongoing games</h3>
         <div id="playing" class="list"><p class="muted small">None.</p></div>
       </div>
     </div>
 
+    <div class="panel" data-panel="learn"><div id="learnPanel"></div></div>
+
     <div class="panel" data-panel="analyze">
-      <h2>Analysis board</h2>
-      <p class="muted">Move pieces freely, or paste a PGN or FEN.</p>
-      <textarea id="importText" rows="3" placeholder="Paste PGN or FEN" spellcheck="false"></textarea>
+      <h2 class="ar-display">Analysis</h2>
+      <p class="muted">Move pieces freely, or paste a PGN or FEN. Right-click to draw arrows (Shift green, Ctrl blue, Alt yellow).</p>
+      <textarea id="importText" class="ar-input" rows="3" placeholder="Paste PGN or FEN" spellcheck="false"></textarea>
       <div class="row gap">
-        <button id="importBtn">Load</button>
-        <button id="newBoard">Empty analysis</button>
-        <button id="copyPgn">Copy PGN</button>
-        <button id="copyFen">Copy FEN</button>
+        <button class="btn primary" id="importBtn">Load</button>
+        <button class="btn" id="newBoard">New board</button>
+        <button class="btn" id="copyPgn">Copy PGN</button>
+        <button class="btn" id="copyFen">Copy FEN</button>
       </div>
+      <div class="bookbox"><h3>Opening explorer</h3><div id="book" class="book"></div></div>
     </div>
 
     <div class="panel" data-panel="games">
-      <h2>Games</h2>
+      <h2 class="ar-display">Games</h2>
       <div class="row gap">
-        <input id="impUser" placeholder="Lichess username" autocomplete="off" spellcheck="false">
-        <button id="impBtn">Load recent games</button>
+        <input id="impUser" class="ar-input" placeholder="Lichess username" autocomplete="off" spellcheck="false">
+        <button class="btn" id="impBtn">Load recent games</button>
       </div>
       <div id="liGames" class="list"></div>
       <h3>Played here</h3>
@@ -123,52 +139,67 @@
     </div>
 
     <section class="card" id="gameCard" hidden>
+      <div class="opening" id="opening"></div>
       <div class="status" id="status"></div>
+      <div class="coach" id="coach" hidden></div>
       <div class="actions" id="actions"></div>
       <div class="moves" id="moves"></div>
       <div class="chat" id="chat" hidden>
         <div class="chatlog" id="chatlog"></div>
-        <input id="chatIn" placeholder="Say something nice" maxlength="140">
+        <input id="chatIn" class="ar-input" placeholder="Say something nice" maxlength="140">
       </div>
     </section>
 
     <section class="card" id="engineCard" hidden>
-      <div class="row between">
-        <label class="switch"><input type="checkbox" id="engOn"> <span>Engine</span></label>
+      <div class="review">
+        <div id="reviewOut"></div>
+        <div class="row gap">
+          <button class="ar-btn" id="reviewBtn">Game Review</button>
+          <select id="reviewDepth" class="ar-select sm"><option value="12">Quick</option><option value="16">Standard</option><option value="20">Deep</option><option value="24">Deeper</option></select>
+        </div>
+      </div>
+      <div class="row between eng-row">
+        <label class="switch"><input type="checkbox" id="engOn"> <span>Engine lines</span></label>
         <span class="muted small" id="engInfo"></span>
       </div>
       <div class="row gap small">
         <label>Engine
-          <select id="engKind"><option value="lite">SF 19 Lite (fast)</option><option value="full">SF 19 Full NNUE (95 MB)</option></select>
+          <select id="engKind" class="ar-select sm"><option value="lite">SF 19 Lite (fast)</option><option value="full">SF 19 Full NNUE (95 MB)</option></select>
         </label>
         <label>Depth
-          <select id="engDepth"><option value="16">16</option><option value="20">20</option><option value="24">24</option><option value="30">30</option><option value="40">40</option><option value="inf">∞</option></select>
+          <select id="engDepth" class="ar-select sm"><option value="16">16</option><option value="20">20</option><option value="24">24</option><option value="30">30</option><option value="40">40</option><option value="inf">∞</option></select>
         </label>
         <label>Lines
-          <select id="engLines"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+          <select id="engLines" class="ar-select sm"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
         </label>
       </div>
       <div id="cloud" class="muted small"></div>
       <div id="lines" class="lines"></div>
-      <div class="review">
-        <div class="row gap">
-          <button class="primary" id="reviewBtn">Full game review</button>
-          <select id="reviewDepth"><option value="12">Quick (12)</option><option value="16">Standard (16)</option><option value="20">Deep (20)</option><option value="24">Deeper (24)</option><option value="28">Max (28)</option></select>
-        </div>
-        <div id="reviewOut"></div>
-      </div>
     </section>
   </aside>
 </main>
 
+<dialog class="ch-dialog" id="setDialog">
+  <form method="dialog" class="ch-set">
+    <h2 class="ar-display">Board settings</h2>
+    <fieldset><legend>Board</legend><div class="swatches" id="themeList"></div></fieldset>
+    <fieldset><legend>Pieces</legend><div class="pieceset" id="pieceList"></div></fieldset>
+    <label class="check"><input type="checkbox" id="soundOn"> Sounds</label>
+    <label class="check"><input type="checkbox" id="coordsOn"> Coordinates</label>
+    <label class="check"><input type="checkbox" id="animOn"> Animate moves</label>
+    <p class="muted small">Keyboard: ← → step through moves, ↑ ↓ (or Home / End) jump to the start or end, F flips the board. On touch screens, swipe left or right below the board.</p>
+    <div class="row end"><button class="ar-btn">Done</button></div>
+  </form>
+</dialog>
+
 <footer class="foot muted small">
   Stockfish 19 (<a href="vendor/stockfish/COPYING.txt">GPLv3</a>, <a href="https://github.com/nmrugg/stockfish.js" rel="noopener">source</a>) ·
-  chess.js (<a href="vendor/chess.js.LICENSE">BSD</a>) · pieces by Colin M.L. Burnett · online play via the <a href="https://lichess.org/api" rel="noopener">Lichess API</a>
+  chess.js (<a href="vendor/chess.js.LICENSE">BSD</a>) · <a href="vendor/LICENSES.md">piece sets &amp; data licences</a> · openings &amp; puzzles from Lichess (CC0) · online play via the <a href="https://lichess.org/api" rel="noopener">Lichess API</a>
 </footer>
 
 <div class="toast" id="toast" hidden></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.1/dist/umd/supabase.js" integrity="sha384-cP+QrKcaFzs7aIG1IzHGLKC5cjjlA05fYF2E7C0hqeDvsLKzwgYAS1cYhsDQB+L1" crossorigin="anonymous"></script>
 <script src="../shared/config.js?v=1"></script>
-<script type="module" src="app.js?v=3"></script>
+<script type="module" src="app.js?v=4"></script>
 </body>
 </html>
