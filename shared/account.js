@@ -32,6 +32,9 @@ export async function user() {
 
 export function onAuthChange(fn) { listeners.add(fn); }
 
+// Opens the Kinetix sign-in dialog (for pages that need an account).
+export function openSignIn() { if (client()) openDialog(); }
+
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // Renders "Sign in" / "you@x · Sign out" into el, with a sign-in dialog.
