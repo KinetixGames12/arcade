@@ -52,8 +52,18 @@
   // Spots next to the site's own post-game buttons, like other review extensions use.
   function slots() {
     if (site === 'chesscom') {
-      return [...document.querySelectorAll('.game-review-buttons-component, .game-over-modal-shell-buttons')]
-        .map((c) => ({ c, ref: c.querySelector('a, button'), kind: 'cc' }));
+      // Every chess.com "Game Review" button (sidebar, game-over popup, the page
+      // you land on after playing): found by its link or label, not by layout
+      // classes, which differ between those screens and change over time.
+      const out = new Map();
+      for (const el of document.querySelectorAll('a, button')) {
+        if (el.closest('.kx-side')) continue;
+        const label = (el.getAttribute('aria-label') || el.textContent || '').trim();
+        const isReview = /[?&]tab=review/.test(el.getAttribute('href') || '') || /^game review$/i.test(label);
+        if (!isReview || !el.parentElement || out.has(el.parentElement)) continue;
+        out.set(el.parentElement, { c: el.parentElement, ref: el, kind: 'cc' });
+      }
+      return [...out.values()];
     }
     return [...document.querySelectorAll('.rcontrols .follow-up')].map((c) => ({ c, ref: c.firstElementChild, kind: 'li' }));
   }
@@ -102,7 +112,7 @@
       if (buttons.has(c)) continue;
       const b = make(kind, ref);
       // Above the site's main button (Game Review on chess.com), matching its width.
-      c.insertBefore(b, ref || null);
+      c.insertBefore(b, ref && ref.parentElement === c ? ref : c.firstChild);
       buttons.set(c, b);
     }
     // Floating pill only while the page has no post-game button row to join.
