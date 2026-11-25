@@ -17,7 +17,7 @@ export class Board {
     this.pieceSet = opts.pieceSet || 'cburnett';
     this.selected = null;
     this.drag = null;
-    this.premove = null;
+    this.premoves = []; // queued premoves, played in order: [{ from, to, promotion }]
     this.shapes = { arrows: [], marks: {} };
     this.pieceEls = new Map(); // square → element
     el.classList.add('cb-board');
@@ -48,12 +48,35 @@ export class Board {
   set(patch) {
     const fenChanged = 'fen' in patch && patch.fen !== this.state.fen;
     Object.assign(this.state, patch);
-    if (fenChanged) { this.selected = null; this.shapes = { arrows: [], marks: {} }; }
+    if (fenChanged) {
+      this.shapes = { arrows: [], marks: {} };
+      // Keep your selected piece when the opponent moves, as long as it is still yours to move or premove.
+      const keep = this.selected && (this.state.movable || this.state.premovable) && this.mine(this.displayMap()[this.selected]);
+      if (!keep) this.selected = null;
+      if (this.drag && this.displayMap()[this.drag.sq] !== this.drag.el.dataset.p) this.cancelDrag();
+    }
     if ('movable' in patch && !patch.movable && !this.state.premovable) this.selected = null;
     this.render(fenChanged);
   }
 
-  setPremove(pm) { this.premove = pm; this.render(false); }
+  setPremoves(list) { this.premoves = list; this.render(false); }
+
+  // The position as you see it: the real one with your queued premoves already played.
+  displayMap() {
+    const map = this.pieceMap();
+    for (const { from, to } of this.premoves) {
+      const code = map[from];
+      if (!code) continue;
+      delete map[from];
+      const df = FILES.indexOf(to[0]) - FILES.indexOf(from[0]);
+      if (code[1] === 'k' && Math.abs(df) === 2) { // castling: bring the rook across
+        const rank = from[1], rookFrom = (df > 0 ? 'h' : 'a') + rank, rookTo = (df > 0 ? 'f' : 'd') + rank;
+        if (map[rookFrom]) { map[rookTo] = map[rookFrom]; delete map[rookFrom]; }
+      }
+      map[to] = code[1] === 'p' && (to[1] === '8' || to[1] === '1') ? `${code[0]}q` : code;
+    }
+    return map;
+  }
 
   // board coordinates ↔ squares
   xy(sq) {
@@ -86,7 +109,8 @@ export class Board {
 
   render(animate) {
     const { lastMove, check } = this.state;
-    const pieces = this.pieceMap();
+    const pieces = this.displayMap();
+    const preSq = new Set(this.premoves.flatMap((p) => [p.from, p.to]));
     const premoveMode = !this.state.movable && this.state.premovable;
     const dests = new Set(this.selected
       ? (premoveMode ? (this.opts.premoveDests?.(this.selected) || []) : this.opts.legal(this.selected).map((m) => m.to))
@@ -101,7 +125,7 @@ export class Board {
       if (lastMove && (sq === lastMove[0] || sq === lastMove[1])) cls.push('last');
       if (sq === this.selected) cls.push('sel');
       if (sq === check) cls.push('incheck');
-      if (this.premove && (sq === this.premove.from || sq === this.premove.to)) cls.push('pre');
+      if (preSq.has(sq)) cls.push('pre');
       if (dests.has(sq)) cls.push(pieces[sq] ? 'cap' : 'dest');
       if (this.shapes.marks[sq]) cls.push(`mk-${this.shapes.marks[sq]}`);
       el.className = cls.join(' ');
@@ -130,7 +154,11 @@ export class Board {
       el.style.transform = `translate(${x * 100}%, ${y * 100}%)`;
     };
     for (const [sq, code] of Object.entries(pieces)) {
-      if (next.has(sq)) { place(next.get(sq), sq, false); continue; }
+      if (next.has(sq)) {
+        // Leave a piece you are dragging under your finger.
+        if (!(this.drag?.moved && this.drag.el === next.get(sq))) place(next.get(sq), sq, false);
+        continue;
+      }
       // nearest vacated element with the same piece → animate it here
       let bi = -1, bd = 99;
       free.forEach(([fsq, el], i) => {
@@ -200,20 +228,26 @@ export class Board {
     if (!this.promoEl.hidden) return;
     const sq = this.squareAt(e.clientX, e.clientY);
     if (!sq) return;
-    if (e.button === 2) { // annotations
+    if (e.button === 2) {
       e.preventDefault();
+      // Right-click cancels every queued premove first; otherwise it draws.
+      if (this.premoves.length) { this.clearPremoves(); return; }
       this.drawing = { from: sq, to: sq, color: this.shapeColor(e) };
       return;
     }
     if (e.button !== 0) return;
-    // left click clears drawings and a pending premove
+    // left click clears drawings
     const hadShapes = this.shapes.arrows.length || Object.keys(this.shapes.marks).length;
     if (hadShapes) { this.shapes = { arrows: [], marks: {} }; }
-    const pieces = this.pieceMap();
+    const pieces = this.displayMap();
     const canAct = this.state.movable || this.state.premovable;
     if (!canAct) { if (hadShapes) this.render(false); this.opts.onIdleTap?.(e); return; }
-    if (this.premove && !this.selected) { this.premove = null; this.opts.onPremove?.(null); }
-    if (this.selected && this.selected !== sq && this.targetOk(sq)) { this.tryMove(this.selected, sq); return; }
+    const premoveMode = !this.state.movable && this.state.premovable;
+    // Clicking anywhere but one of your pieces, with nothing selected, cancels the premoves.
+    if (this.premoves.length && !this.selected && !this.mine(pieces[sq])) { this.clearPremoves(); return; }
+    // In premove mode a click on your own piece selects it rather than premoving onto it.
+    const ownTarget = premoveMode && this.mine(pieces[sq]);
+    if (this.selected && this.selected !== sq && !ownTarget && this.targetOk(sq)) { this.tryMove(this.selected, sq); return; }
     if (this.mine(pieces[sq])) {
       this.selected = sq;
       this.startDrag(e, sq);
@@ -287,15 +321,22 @@ export class Board {
     this.drawing = null;
   }
 
+  clearPremoves() {
+    this.premoves = [];
+    this.selected = null;
+    this.opts.onPremove?.([]);
+    this.render(false);
+  }
+
   tryMove(from, to, dragged) {
     const premoveMode = !this.state.movable && this.state.premovable;
-    const code = this.pieceMap()[from];
+    const code = this.displayMap()[from];
     const lastRank = (code === 'wp' && to[1] === '8') || (code === 'bp' && to[1] === '1');
     this.selected = null;
     if (premoveMode) {
-      this.premove = { from, to, promotion: lastRank ? 'q' : undefined };
-      this.opts.onPremove?.(this.premove);
-      this.render(false);
+      this.premoves = [...this.premoves, { from, to, promotion: lastRank ? 'q' : undefined }];
+      this.opts.onPremove?.(this.premoves);
+      this.render(dragged ? false : undefined);
       return;
     }
     if (lastRank && this.opts.legal(from).some((m) => m.to === to && m.promotion)) { this.askPromotion(from, to, code[0]); return; }
