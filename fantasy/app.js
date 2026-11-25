@@ -1,9 +1,9 @@
 // Kinetix Fantasy: one app for NFL (fantasy-football/) and NBA
 // (fantasy-basketball/). The page's <body data-sport> picks the sport.
-import { mountAccount, onAuthChange, user, openSignIn } from '../shared/account.js?v=4';
+import { mountAccount, onAuthChange, user, openSignIn } from '../shared/account.js?v=5';
 import { SPORTS, slotOk, slotName, headshot, teamLogo, rosterSize } from './sports.js?v=2';
-import * as api from './api.js?v=2';
-import * as data from './data.js?v=2';
+import * as api from './api.js?v=3';
+import * as data from './data.js?v=3';
 import { playerPoints, CATS, teamCats, compareCats } from './scoring.js?v=2';
 import { esc, $, $$, toast, modal, confirmBox, fmt, timeAgo, teamBadge, busy, pct } from './ui.js?v=2';
 import { DraftRoom, runMock, fillSlots } from './draft.js?v=2';

@@ -1,6 +1,6 @@
 // Carries the Lichess connection across devices through the Arcade account.
 // Table: public.lichess_links, one owner-only row per account.
-import { client, user } from '../shared/account.js?v=3';
+import { client, user } from '../shared/account.js?v=5';
 
 export { user };
 
