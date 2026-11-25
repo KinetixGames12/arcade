@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <rect width="400" height="250" fill="#120f26"/>
+  <g font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="13" text-anchor="middle">
+    <rect x="70" y="30" width="260" height="40" rx="10" fill="#ffd86b"/><text x="200" y="55" fill="#1b1730">APPLE · MANGO · PEAR · PLUM</text>
+    <g fill="#26213f">
+      <rect x="70" y="80" width="60" height="40" rx="9"/><rect x="137" y="80" width="60" height="40" rx="9"/><rect x="204" y="80" width="60" height="40" rx="9" fill="#f2f0fb"/><rect x="271" y="80" width="59" height="40" rx="9"/>
+      <rect x="70" y="128" width="60" height="40" rx="9" fill="#f2f0fb"/><rect x="137" y="128" width="60" height="40" rx="9"/><rect x="204" y="128" width="60" height="40" rx="9"/><rect x="271" y="128" width="59" height="40" rx="9" fill="#f2f0fb"/>
+      <rect x="70" y="176" width="60" height="40" rx="9"/><rect x="137" y="176" width="60" height="40" rx="9" fill="#f2f0fb"/><rect x="204" y="176" width="60" height="40" rx="9"/><rect x="271" y="176" width="59" height="40" rx="9"/>
+    </g>
+    <g font-size="10" fill="#f2f0fb"><text x="100" y="104">MARS</text><text x="167" y="104">TWIX</text><text x="234" y="104" fill="#1b1730">MUD</text><text x="300" y="104">EARTH</text>
+    <text x="100" y="152" fill="#1b1730">POT</text><text x="167" y="152">VENUS</text><text x="234" y="152">BOUNTY</text><text x="300" y="152" fill="#1b1730">HUMBLE</text>
+    <text x="100" y="200">SATURN</text><text x="167" y="200" fill="#1b1730">CUSTARD</text><text x="234" y="200">GALAXY</text><text x="300" y="200">MARS?</text></g>
+  </g>
+  <g transform="translate(16 18)"><rect width="56" height="26" rx="13" fill="#d4ff3f"/><text x="28" y="18" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="12" fill="#11140a">DAILY</text></g>
+</svg>

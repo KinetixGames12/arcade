@@ -273,3 +273,5 @@ body.noanim .cb-piece.anim { transition: none; }
 .ch-set.ext .ar-btn.wide { width: 100%; }
 .ext-tabs { align-self: flex-start; }
 @media (max-width: 520px) { .ext-btn span { display: none; } .ext-btn { padding: 6px 9px; } }
+.tabs [data-tab].locked { opacity: .45; }
+.tabs [data-tab].locked::after { content: ' 🔒'; font-size: 11px; }

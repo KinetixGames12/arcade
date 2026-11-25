@@ -1,0 +1,19 @@
+/* Quads. Group colours are pastel in both themes, with dark text on them. */
+.qd-board { display: flex; flex-direction: column; gap: 8px; width: min(520px, 100%); }
+.qd-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.qd-tiles.shake { animation: qd-shake .35s; }
+.qd-t { min-width: 0; min-height: clamp(58px, 16vw, 76px); padding: 4px; border: 0; border-radius: var(--r); background: var(--bg-2); color: var(--text); font: 800 clamp(12px, 3.4vw, 16px)/1.1 var(--font); letter-spacing: .02em; cursor: pointer; overflow-wrap: anywhere; transition: transform .12s var(--ease), background .15s; }
+.qd-t.long { font-size: clamp(10px, 2.7vw, 13px); }
+.qd-t:hover { transform: translateY(-2px); }
+.qd-t:active { transform: scale(.96); }
+.qd-t.on { background: var(--text); color: var(--bg); }
+.qd-group { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 64px; padding: 10px; border-radius: var(--r); background: var(--c); color: #1b1730; text-align: center; animation: qd-in .35s var(--ease); }
+.qd-group b { font: 800 14px/1.2 var(--font-display); text-transform: uppercase; letter-spacing: .04em; }
+.qd-group span { font-size: 14px; font-weight: 600; }
+.qd-group.missed { opacity: .8; outline: 2px dashed rgba(27, 23, 48, .35); outline-offset: -5px; }
+.qd-mis { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 14px; }
+.qd-mis i { width: 12px; height: 12px; border-radius: 50%; background: var(--bg-2); }
+.qd-mis i.on { background: var(--muted); }
+.qd-tools { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+@keyframes qd-shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+@keyframes qd-in { from { transform: scale(.9); opacity: 0; } }

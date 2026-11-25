@@ -78,3 +78,5 @@ a.g-card:hover .g-glare { opacity: 1; }
   .games-wrap, .perks { padding-left: 16px; padding-right: 16px; }
   .g-card { transform: none; }
 }
+.ar-chip.g-done { color: var(--good); border-color: color-mix(in srgb, var(--good) 40%, transparent); }
+.ar-chip.g-new { color: var(--volt-ink); background: var(--volt); border-color: transparent; }
