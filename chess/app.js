@@ -1,6 +1,6 @@
 // Kinetix Chess: bots, Lichess play, Stockfish analysis, Game Review and Learn.
 import { Chess, DEFAULT_POSITION } from './vendor/chess.js?v=2';
-import { Board, PIECE_SETS } from './board.js?v=5';
+import { Board, PIECE_SETS } from './board.js?v=6';
 import * as snd from './sounds.js?v=1';
 import { buildReview, coachNote } from './review.js?v=1';
 import { CLASSES, ORDER, badgeSvg } from './badges.js?v=1';
@@ -131,31 +131,48 @@ const board = new Board($('#board'), {
   legal: (sq) => chessAt(boardFen()).moves({ square: sq, verbose: true }),
   onMove: (from, to, promotion) => userMove({ from, to, promotion }),
   premoveDests: (sq) => premoveDests(sq),
-  onPremove: (pm) => { G.premove = pm; if (pm) snd.play('premove'); },
+  onPremove: (list) => { if (list.length) snd.play('premove'); },
   pieceSet: settings.pieces,
 });
 const boardFen = () => (G.mode === 'learn' ? G.lp.fen : curFen());
 
-// Where a piece could go next turn (premove): pretend it is already our move.
+// Where a piece could go on a later turn (premove), by how it moves alone:
+// blockers and checks are ignored because the position will change first.
+// It reads the board as shown, so premoves can chain off earlier premoves.
+const RAYS = { b: [[1, 1], [1, -1], [-1, 1], [-1, -1]], r: [[1, 0], [-1, 0], [0, 1], [0, -1]] };
+RAYS.q = [...RAYS.b, ...RAYS.r];
 function premoveDests(sq) {
-  const parts = lastFen().split(' ');
-  parts[1] = G.myColor; parts[3] = '-';
-  try {
-    return new Chess(parts.join(' ')).moves({ square: sq, verbose: true }).map((m) => m.to);
-  } catch {
-    return 'abcdefgh'.split('').flatMap((f) => [1, 2, 3, 4, 5, 6, 7, 8].map((r) => f + r)).filter((x) => x !== sq);
+  const code = board.displayMap()[sq];
+  if (!code) return [];
+  const F = 'abcdefgh', f = F.indexOf(sq[0]), r = Number(sq[1]), white = code[0] === 'w';
+  const out = [];
+  const add = (df, dr) => { const nf = f + df, nr = r + dr; if (nf >= 0 && nf < 8 && nr >= 1 && nr <= 8) out.push(F[nf] + nr); };
+  const type = code[1];
+  if (type === 'p') {
+    const d = white ? 1 : -1;
+    add(0, d); add(-1, d); add(1, d);
+    if (r === (white ? 2 : 7)) add(0, 2 * d);
+  } else if (type === 'n') {
+    [[1, 2], [2, 1], [-1, 2], [-2, 1], [1, -2], [2, -1], [-1, -2], [-2, -1]].forEach(([a, b]) => add(a, b));
+  } else if (type === 'k') {
+    RAYS.q.forEach(([a, b]) => add(a, b));
+    if (sq === (white ? 'e1' : 'e8')) { add(2, 0); add(-2, 0); }
+  } else {
+    RAYS[type].forEach(([a, b]) => { for (let k = 1; k < 8; k++) add(a * k, b * k); });
   }
+  return out;
 }
 function canPremove() {
   return settings.premove && G.live && (G.mode === 'online' || G.mode === 'bot') && G.cursor === G.moves.length && turnOf(lastFen()) !== G.myColor;
 }
-// Plays a queued premove once it is our turn (dropped if it became illegal).
+// Plays the first queued premove the moment it is our turn. If it is not
+// legal there, the whole queue is cancelled (it was planned for another position).
 function firePremove() {
-  const pm = G.premove;
-  if (!pm || !G.live || turnOf(lastFen()) !== G.myColor) return;
-  G.premove = null;
-  board.setPremove(null);
-  if (playMove(lastFen(), pm)) setTimeout(() => userMove(pm), 60);
+  const [pm, ...rest] = board.premoves;
+  if (!pm || !G.live || G.cursor !== G.moves.length || turnOf(lastFen()) !== G.myColor) return;
+  if (!playMove(lastFen(), pm)) { board.setPremoves([]); return; }
+  board.premoves = rest;
+  userMove(pm);
 }
 
 function canMove() {
@@ -199,6 +216,9 @@ function fmtEval(ev) {
 /* ── rendering ───────────────────────────────────────────────── */
 function render() {
   syncAnalyzeTab();
+  // style.css uses these to show only what matters: the game while you play, setup otherwise.
+  document.body.dataset.mode = G.mode;
+  document.body.classList.toggle('live', !!G.live);
   if (G.mode === 'learn') {
     const lp = G.lp;
     board.set({ fen: lp.fen, orientation: lp.orientation, lastMove: lp.lastMove, check: checkSq(lp.fen), movable: !!lp.movable, premovable: false, color: turnOf(lp.fen), arrows: lp.arrows || [], badge: null });
@@ -222,7 +242,7 @@ function render() {
   });
   // Keep a queued premove when it just became our turn: firePremove() plays it right after this render.
   const premoveAlive = settings.premove && G.live && (G.mode === 'online' || G.mode === 'bot') && G.cursor === G.moves.length;
-  if (!premoveAlive && G.premove) { G.premove = null; board.setPremove(null); }
+  if (!premoveAlive && board.premoves.length) board.setPremoves([]);
   renderPlayers();
   renderMoves();
   renderStatus();
@@ -255,8 +275,8 @@ function playerHtml(color) {
   const title = p.title ? `<span class="title">${esc(p.title)}</span> ` : '';
   const acc = G.review ? `<span class="acc">${G.review.acc[color].toFixed(1)}%</span>` : '';
   const turn = G.live && turnOf(lastFen()) === color;
-  const av = p.bot ? bots.avatar(p.bot, 32) : `<span class="dot ${color}"></span>`;
-  return `${av}<span class="pname">${title}${esc(p.name)}${rating}</span>${capturedHtml(color)}${acc}<span class="clock ${turn ? 'run' : ''}" data-clock="${color}">${clockText(color)}</span>`;
+  const av = p.bot ? bots.avatar(p.bot, 36) : `<span class="dot ${color}"></span>`;
+  return `${av}<span class="pinfo"><span class="pname">${title}${esc(p.name)}${rating}</span>${capturedHtml(color)}</span>${acc}<span class="clock ${turn ? 'run' : ''}" data-clock="${color}">${clockText(color)}</span>`;
 }
 function renderPlayers() {
   const topColor = G.orientation === 'white' ? 'b' : 'w';
@@ -557,7 +577,7 @@ function coachOnLastMove(fen, res) {
 function finishBot(result, why) {
   if (!G.live) return;
   G.live = false;
-  G.premove = null;
+  board.premoves = [];
   if (G.clock) { G.clock[G.clock.turn] = clockMs(G.clock.turn); G.clock.running = false; }
   G.result = result;
   const won = (result === '1-0' && G.myColor === 'w') || (result === '0-1' && G.myColor === 'b');
@@ -1044,7 +1064,8 @@ function fillTcSelect(sel, withCorr) {
 fillTcSelect($('#chTc'), true);
 fillTcSelect($('#aiTc'), false);
 // Lichess only allows Rapid and Classical seeks from outside apps (Blitz works for challenges and the AI).
-$('#pool').innerHTML = TCS.map((tc, i) => speedOf(tc) === 'Blitz' ? '' : `<button data-seek="${i}"><b>${tc.label}</b><span>${speedOf(tc)}</span></button>`).join('');
+$('#pool').innerHTML = TCS.map((tc, i) => speedOf(tc) === 'Blitz' ? '' : `<button type="button" data-seek="${i}"><b>${tc.label}</b><span>${speedOf(tc)}</span></button>`).join('')
+  + '<button type="button" data-seek="custom"><b>Custom</b><span>Your clock</span></button>';
 
 function tcForm(val) {
   if (val === 'd3') return { days: 3 };
@@ -1313,12 +1334,49 @@ function stopSeek() {
   document.querySelectorAll('#pool button').forEach((b) => b.classList.remove('on'));
 }
 
-$('#pool').addEventListener('click', async (e) => {
+// Custom clock for quick pairing. Lichess sorts speed by minutes + 40 × increment
+// seconds and only lets outside apps seek Rapid or slower (8 minutes and up).
+const customTc = () => {
+  const t = Math.round(Number($('#ctMin').value)), i = Math.round(Number($('#ctInc').value));
+  return { t, i, label: `${t}+${i}` };
+};
+function checkCustomTc() {
+  const tc = customTc();
+  let msg = '';
+  if (!(tc.t >= 1 && tc.t <= 180) || !(tc.i >= 0 && tc.i <= 180)) msg = 'Minutes 1–180, increment 0–180 seconds.';
+  else if (speedOf(tc) === 'Blitz') msg = `${tc.label} is Blitz. Lichess only pairs Rapid or slower from outside apps (minutes + 40 × increment ≥ 8 min). For Blitz, challenge a friend or the AI below.`;
+  $('#ctNote').textContent = msg || `${speedOf(tc)} · ${tc.label}`;
+  $('#ctGo').disabled = !!msg;
+  return msg ? null : tc;
+}
+$('#ctMin').value = settings.customTc?.t ?? 15;
+$('#ctInc').value = settings.customTc?.i ?? 5;
+$('#customTc').addEventListener('input', checkCustomTc);
+$('#customTc').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const tc = checkCustomTc();
+  if (!tc) return;
+  settings.customTc = { t: tc.t, i: tc.i };
+  saveSettings();
+  seek(tc, $('#pool [data-seek="custom"]'));
+});
+
+$('#pool').addEventListener('click', (e) => {
   const b = e.target.closest('[data-seek]');
   if (!b) return;
   if (b.classList.contains('on')) return stopSeek();
+  if (b.dataset.seek === 'custom') {
+    const form = $('#customTc');
+    form.hidden = !form.hidden;
+    b.classList.toggle('open', !form.hidden);
+    if (!form.hidden) { checkCustomTc(); $('#ctMin').focus(); }
+    return;
+  }
+  seek(TCS[Number(b.dataset.seek)], b);
+});
+
+async function seek(tc, b) {
   stopSeek();
-  const tc = TCS[Number(b.dataset.seek)];
   b.classList.add('on');
   const ctl = new AbortController();
   seekAbort = ctl;
@@ -1337,7 +1395,7 @@ $('#pool').addEventListener('click', async (e) => {
       b.classList.remove('on');
     }
   }
-});
+}
 
 $('#chSend').addEventListener('click', async () => {
   const user = $('#chUser').value.trim();
@@ -1660,6 +1718,7 @@ function showTab(name, keepGame) {
     Object.assign(G, { mode: 'analysis', startFen: DEFAULT_POSITION, moves: [], cursor: 0, result: null, status: '', live: false, myColor: null, clock: null, review: null, historyId: null, bot: null, online: null, white: { name: 'White' }, black: { name: 'Black' } });
     render();
   }
+  document.body.dataset.tab = name;
   document.querySelectorAll('.tabs [data-tab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
   document.querySelectorAll('.panel').forEach((p) => { p.hidden = p.dataset.panel !== name; });
   if (location.hash !== `#${name}`) window.history.replaceState(null, '', `#${name}`);
