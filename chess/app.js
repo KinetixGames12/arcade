@@ -9,8 +9,8 @@ import * as book from './openings.js?v=1';
 import { createLearn } from './learn.js?v=1';
 import { Engine } from './engine.js?v=2';
 import * as li from './lichess.js?v=2';
-import * as sync from './sync.js?v=2';
-import { mountAccount, onAuthChange } from '../shared/account.js?v=3';
+import * as sync from './sync.js?v=3';
+import { mountAccount, onAuthChange } from '../shared/account.js?v=5';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
