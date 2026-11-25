@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs><linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d6bd6"/><stop offset=".55" stop-color="#0b2a6b"/><stop offset="1" stop-color="#050a24"/></linearGradient></defs>
+  <rect width="400" height="250" fill="url(#sea)"/>
+  <g fill="#fff" opacity=".18"><circle cx="60" cy="200" r="4"/><circle cx="72" cy="180" r="3"/><circle cx="66" cy="160" r="2"/><circle cx="330" cy="120" r="3"/><circle cx="340" cy="100" r="2"/></g>
+  <g font-family="Arial Black, Arial, sans-serif" font-weight="900" text-anchor="middle">
+    <rect x="120" y="34" width="160" height="34" rx="17" fill="#fff" opacity=".92"/><text x="200" y="57" font-size="15" fill="#0b2a6b">APPLE · 10</text>
+    <rect x="135" y="86" width="130" height="32" rx="16" fill="#3ef0c8"/><text x="200" y="108" font-size="14" fill="#06302a">MANGO · 45</text>
+    <rect x="148" y="136" width="104" height="30" rx="15" fill="#ffd86b"/><text x="200" y="157" font-size="13" fill="#3a2a00">QUINCE · 85</text>
+    <rect x="156" y="184" width="88" height="30" rx="15" fill="#c9a6ff"/><text x="200" y="205" font-size="12" fill="#2a1260">FEIJOA 100</text>
+  </g>
+  <path d="M330 40v150" stroke="#d4ff3f" stroke-width="5" stroke-linecap="round"/><path d="M318 176l12 18 12-18" fill="none" stroke="#d4ff3f" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <g transform="translate(16 18)"><rect width="56" height="26" rx="13" fill="#d4ff3f"/><text x="28" y="18" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="12" fill="#11140a">DAILY</text></g>
+</svg>
