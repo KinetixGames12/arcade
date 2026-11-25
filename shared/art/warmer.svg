@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs><radialGradient id="bg" cx=".5" cy=".5" r=".75"><stop offset="0" stop-color="#2b1a66"/><stop offset="1" stop-color="#0a0817"/></radialGradient>
+  <radialGradient id="sea" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#3a3a9a"/><stop offset="1" stop-color="#14123c"/></radialGradient>
+  <clipPath id="c"><circle cx="200" cy="125" r="100"/></clipPath></defs>
+  <rect width="400" height="250" fill="url(#bg)"/>
+  <circle cx="200" cy="125" r="112" fill="#ff7832" opacity=".18"/>
+  <circle cx="200" cy="125" r="100" fill="url(#sea)"/>
+  <g clip-path="url(#c)">
+    <path d="M110 70c30-12 60-6 80 8s20 30 5 40-40 10-55 30-30 10-40-10-15-55 10-68z" fill="#ffc466"/>
+    <path d="M205 60c25-8 55 0 70 20s5 35-15 40-25 25-45 20-25-30-20-50 0-24 10-30z" fill="#d62828"/>
+    <path d="M230 150c20-5 45 5 50 25s-10 35-35 35-35-20-30-40 5-18 15-20z" fill="#ff7832"/>
+    <path d="M120 150c15 0 30 15 28 35s-20 30-35 20-20-30-12-45 9-10 19-10z" fill="#fff1c9"/>
+    <path d="M95 125h210M100 90h200M100 160h200M200 25v200M150 30c-25 60-25 130 0 190M250 30c25 60 25 130 0 190" stroke="#ffffff" stroke-opacity=".12" fill="none"/>
+  </g>
+  <circle cx="200" cy="125" r="100" fill="none" stroke="#ffffff" stroke-opacity=".25" stroke-width="2"/>
+  <g font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="12"><rect x="300" y="196" width="84" height="26" rx="13" fill="#d62828"/><text x="342" y="214" text-anchor="middle" fill="#fff">HOT 🔥</text></g>
+  <g transform="translate(16 26)"><rect width="56" height="26" rx="13" fill="#d4ff3f"/><text x="28" y="18" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="12" fill="#11140a">DAILY</text></g>
+</svg>

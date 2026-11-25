@@ -1,0 +1,25 @@
+/* Kinetix daily games. Tokens from shared/arcade.css. */
+.dg-top .dg-title { font-family: var(--font-display); font-weight: 800; font-size: 15px; color: var(--text); text-decoration: none; padding-left: 12px; border-left: 1px solid var(--line); }
+.dg-top .dg-title small { color: var(--muted); font-weight: 600; margin-left: 6px; }
+.dg-main { max-width: 560px; margin: 0 auto; padding: 16px 16px 40px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.dg-sub { color: var(--muted); font-size: 14px; text-align: center; margin: 0; }
+.dg-modal { border: 1px solid var(--line); border-radius: var(--r-xl); padding: 26px 22px 22px; width: min(420px, calc(100vw - 24px)); background: var(--panel); color: var(--text); box-shadow: var(--shadow-lg); }
+.dg-modal[open] { animation: dg-pop .3s var(--ease); }
+@keyframes dg-pop { from { opacity: 0; transform: translateY(12px) scale(.97); } }
+.dg-modal::backdrop { background: rgba(8, 7, 15, .6); backdrop-filter: blur(4px); }
+.dg-modal h2 { margin: 0 0 6px; font-size: 26px; }
+.dg-modal p { margin: 6px 0; }
+.dg-x { position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--bg-2); color: var(--text); cursor: pointer; }
+.dg-line { font-size: 18px; }
+.dg-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 16px 0; text-align: center; }
+.dg-stats b { display: block; font: 800 26px/1 var(--font-display); }
+.dg-stats span { font-size: 11px; color: var(--muted); }
+.dg-dist { display: flex; flex-direction: column; gap: 4px; margin: 10px 0 16px; }
+.dg-bar { display: grid; grid-template-columns: 22px 1fr; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; }
+.dg-bar i { display: block; font-style: normal; text-align: right; padding: 3px 7px; border-radius: 5px; background: var(--bg-2); color: var(--text); }
+.dg-bar.on i { background: var(--volt); color: var(--volt-ink); }
+.dg-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.dg-foot b { display: block; font: 800 22px/1 var(--mono); }
+.dg-help h3 { margin: 14px 0 4px; font-size: 15px; }
+.dg-help p { color: var(--muted); }
+@media (max-width: 480px) { .dg-top .ar-wordmark { display: none; } .dg-top .dg-title { border-left: 0; padding-left: 0; } }

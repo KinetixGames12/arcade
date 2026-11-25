@@ -1,0 +1,16 @@
+:root { --wm-sea: #dfe8ff; --wm-land: #f4f3fa; --wm-edge: rgba(60, 50, 110, .35); --wm-grid: rgba(60, 50, 110, .12); }
+:root[data-theme="dark"] { --wm-sea: #121032; --wm-land: #2a2650; --wm-edge: rgba(200, 190, 255, .25); --wm-grid: rgba(200, 190, 255, .08); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --wm-sea: #121032; --wm-land: #2a2650; --wm-edge: rgba(200, 190, 255, .25); --wm-grid: rgba(200, 190, 255, .08); } }
+.wm-globe { width: min(460px, 92vw); aspect-ratio: 1; filter: drop-shadow(0 20px 40px rgba(60, 40, 160, .25)); }
+.wm-globe canvas { width: 100%; height: 100%; touch-action: none; cursor: grab; display: block; }
+.wm-globe canvas:active { cursor: grabbing; }
+.wm-form { display: flex; gap: 8px; width: min(460px, 100%); }
+.wm-form[hidden] { display: none; }
+.wm-list { display: flex; flex-direction: column; gap: 6px; width: min(460px, 100%); }
+.wm-count { margin: 0; font-size: 13px; color: var(--muted); font-weight: 600; }
+.wm-row { display: grid; grid-template-columns: 14px 28px 1fr auto; gap: 10px; align-items: center; padding: 9px 12px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); animation: wm-in .3s var(--ease); }
+@keyframes wm-in { from { opacity: 0; transform: translateY(-6px); } }
+.wm-row.win { border-color: #3fbf6b; }
+.wm-sw { width: 14px; height: 14px; border-radius: 4px; }
+.wm-f { font-size: 20px; }
+.wm-km { font-family: var(--mono); font-weight: 700; font-size: 14px; }

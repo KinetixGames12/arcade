@@ -1,0 +1,28 @@
+:root { --hit: #3fbf6b; --near: #e3b23c; --absent: #3a3654; }
+:root[data-theme="light"] { --absent: #8b87a3; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --absent: #8b87a3; } }
+.lx-board { display: grid; grid-template-rows: repeat(6, 1fr); gap: 6px; width: min(340px, 90vw); }
+.lx-r { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.lx-t { aspect-ratio: 1; display: grid; place-items: center; border: 2px solid var(--line-2); border-radius: 10px; font: 800 clamp(24px, 7vw, 32px)/1 var(--font-display); text-transform: uppercase; color: var(--text); background: var(--panel); user-select: none; }
+.lx-t.typed { border-color: var(--muted); }
+.lx-t.pop { animation: lx-pop .1s ease; }
+@keyframes lx-pop { 50% { transform: scale(1.1); } }
+.lx-t.hit, .lx-t.near, .lx-t.absent { border-color: transparent; color: #fff; }
+.lx-t.hit { background: var(--hit); } .lx-t.near { background: var(--near); } .lx-t.absent { background: var(--absent); }
+.lx-t.flip { animation: lx-flip .5s var(--d, 0s) ease both; }
+@keyframes lx-flip { 0% { transform: rotateX(0); background: var(--panel); color: var(--text); border-color: var(--muted); } 49% { transform: rotateX(90deg); background: var(--panel); color: var(--text); border-color: var(--muted); } 50% { transform: rotateX(90deg); } 100% { transform: rotateX(0); } }
+.lx-r.shake { animation: lx-shake .4s; }
+@keyframes lx-shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+.lx-r.win .lx-t { animation: lx-jump .5s ease both; }
+.lx-r.win .lx-t:nth-child(2) { animation-delay: .1s; } .lx-r.win .lx-t:nth-child(3) { animation-delay: .2s; } .lx-r.win .lx-t:nth-child(4) { animation-delay: .3s; } .lx-r.win .lx-t:nth-child(5) { animation-delay: .4s; }
+@keyframes lx-jump { 40% { transform: translateY(-18px); } }
+.lx-kb { display: flex; flex-direction: column; gap: 7px; width: min(500px, 100%); margin-top: 8px; }
+.lx-row { display: flex; gap: 5px; justify-content: center; }
+.lx-row button { flex: 1; max-width: 46px; height: 56px; border: 0; border-radius: 8px; background: var(--bg-2); color: var(--text); font: 800 15px/1 var(--font); text-transform: uppercase; cursor: pointer; transition: background .2s, transform .1s; touch-action: manipulation; }
+.lx-row button:active { transform: scale(.94); }
+.lx-row button.wide { max-width: 68px; flex: 1.5; font-size: 12px; }
+.lx-row button.hit { background: var(--hit); color: #fff; } .lx-row button.near { background: var(--near); color: #fff; } .lx-row button.absent { background: var(--absent); color: #fff; opacity: .65; }
+.lx-actions { margin-top: 6px; }
+.lx-ans { letter-spacing: .12em; color: var(--accent); }
+.lx-demo { display: grid; grid-template-columns: repeat(5, 44px); gap: 5px; margin: 10px 0; }
+.lx-demo .lx-t { font-size: 20px; }
