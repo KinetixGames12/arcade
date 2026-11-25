@@ -96,6 +96,15 @@ function headers(extra) {
 
 export class LichessError extends Error {}
 
+// Lichess errors come as a string or as form errors like {"error":{"time":["msg"]}}.
+function errText(data, res) {
+  const e = data && (data.error ?? data.message);
+  if (typeof e === 'string') return e;
+  if (e && typeof e === 'object') return Object.values(e).flat().join(' ') || JSON.stringify(e);
+  if (typeof data === 'string' && data) return data;
+  return `${res.status} ${res.statusText}`;
+}
+
 export async function api(path, { method = 'GET', form, signal } = {}) {
   const init = { method, headers: headers({ Accept: 'application/json' }), signal };
   if (form) {
@@ -107,8 +116,7 @@ export async function api(path, { method = 'GET', form, signal } = {}) {
   let data = null;
   try { data = text ? JSON.parse(text) : null; } catch { data = text; }
   if (!res.ok) {
-    const msg = (data && (data.error || data.message)) || `${res.status} ${res.statusText}`;
-    const err = new LichessError(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    const err = new LichessError(errText(data, res));
     err.status = res.status;
     throw err;
   }
@@ -126,7 +134,9 @@ export async function stream(path, onEvent, { method = 'GET', form, signal } = {
   const res = await fetch(HOST + path, init);
   if (!res.ok) {
     const data = await res.json().catch(() => null);
-    throw new LichessError((data && (data.error || JSON.stringify(data))) || `${res.status} ${res.statusText}`);
+    const err = new LichessError(errText(data, res));
+    err.status = res.status;
+    throw err;
   }
   const reader = res.body.getReader();
   const dec = new TextDecoder();

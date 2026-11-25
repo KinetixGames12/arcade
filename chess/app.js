@@ -1,6 +1,6 @@
 // Kinetix Chess: bots, Lichess play, Stockfish analysis, Game Review and Learn.
 import { Chess, DEFAULT_POSITION } from './vendor/chess.js?v=2';
-import { Board, PIECE_SETS } from './board.js?v=3';
+import { Board, PIECE_SETS } from './board.js?v=4';
 import * as snd from './sounds.js?v=1';
 import { buildReview, coachNote } from './review.js?v=1';
 import { CLASSES, ORDER, badgeSvg } from './badges.js?v=1';
@@ -8,7 +8,7 @@ import * as bots from './bots.js?v=1';
 import * as book from './openings.js?v=1';
 import { createLearn } from './learn.js?v=1';
 import { Engine } from './engine.js?v=2';
-import * as li from './lichess.js?v=2';
+import * as li from './lichess.js?v=3';
 import * as sync from './sync.js?v=3';
 import { mountAccount, onAuthChange } from '../shared/account.js?v=5';
 
@@ -1029,7 +1029,8 @@ function fillTcSelect(sel, withCorr) {
 }
 fillTcSelect($('#chTc'), true);
 fillTcSelect($('#aiTc'), false);
-$('#pool').innerHTML = TCS.map((tc, i) => `<button data-seek="${i}"><b>${tc.label}</b><span>${speedOf(tc)}</span></button>`).join('');
+// Lichess only allows Rapid and Classical seeks from outside apps (Blitz works for challenges and the AI).
+$('#pool').innerHTML = TCS.map((tc, i) => speedOf(tc) === 'Blitz' ? '' : `<button data-seek="${i}"><b>${tc.label}</b><span>${speedOf(tc)}</span></button>`).join('');
 
 function tcForm(val) {
   if (val === 'd3') return { days: 3 };
@@ -1593,6 +1594,18 @@ function renderSettings() {
   $('#premoveOn').checked = settings.premove;
 }
 $('#setBtn').addEventListener('click', () => { renderSettings(); $('#setDialog').showModal(); });
+// Browser extension: where to get it and how to install.
+function showExt(browser) {
+  document.querySelectorAll('[data-ext-b]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.extB === browser)));
+  document.querySelectorAll('[data-ext-p]').forEach((p) => { p.hidden = p.dataset.extP !== browser; });
+}
+function openExt() {
+  showExt(/firefox/i.test(navigator.userAgent) ? 'firefox' : 'chrome');
+  $('#extDialog').showModal();
+}
+$('#extBtn').addEventListener('click', openExt);
+document.addEventListener('click', (e) => { if (e.target.closest('[data-ext]')) openExt(); });
+$('#extDialog').addEventListener('click', (e) => { const b = e.target.closest('[data-ext-b]'); if (b) showExt(b.dataset.extB); });
 $('#setDialog').addEventListener('click', (e) => {
   const t = e.target.closest('[data-theme-k]'); const pc = e.target.closest('[data-piece-k]');
   if (t) settings.board = t.dataset.themeK;
