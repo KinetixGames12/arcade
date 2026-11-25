@@ -95,7 +95,8 @@ export class Board {
     for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
       const sq = this.sqAt(x, y);
       const el = this.sqEls[y * 8 + x];
-      const light = (FILES.indexOf(sq[0]) + Number(sq[1])) % 2 === 1;
+      // a1 is dark: file index 0 + rank 1 is odd, so light squares have an even sum.
+      const light = (FILES.indexOf(sq[0]) + Number(sq[1])) % 2 === 0;
       const cls = ['cb-sq', light ? 'l' : 'd'];
       if (lastMove && (sq === lastMove[0] || sq === lastMove[1])) cls.push('last');
       if (sq === this.selected) cls.push('sel');
