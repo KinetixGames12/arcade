@@ -1,10 +1,11 @@
-// On chess.com and Lichess game pages: adds a "Review in Kinetix" button by
-// the board and (only if you switch it on) opens the review when the game
-// ends. It never reads or shows anything during a live game.
+// On chess.com and Lichess game pages: adds a "Review in Kinetix" button next
+// to the site's own post-game buttons (floating by the board when there are
+// none) and, only if you switch it on, opens the review when the game ends.
+// It never reads or shows anything during a live game.
 (() => {
   const api = globalThis.browser ?? globalThis.chrome;
   const site = location.hostname.includes('lichess') ? 'lichess' : 'chesscom';
-  let btn, toastEl, gameKey = location.pathname, autoDone = false;
+  let toastEl, gameKey = location.pathname, autoDone = false;
 
   const isGamePage = () => site === 'lichess'
     ? /^\/[A-Za-z0-9]{8}([A-Za-z0-9]{4})?(\/(white|black))?\/?$/.test(location.pathname)
@@ -33,23 +34,53 @@
     toast.t = setTimeout(() => toastEl.classList.remove('show'), 4500);
   }
 
+  // Buttons we've added, keyed by where they live: 'float' or a page container.
+  const buttons = new Map();
+  const LABEL = 'Review in Kinetix';
+
   async function review(auto = false) {
-    if (!btn) return;
-    btn.disabled = true;
-    btn.querySelector('span').textContent = 'Opening review…';
+    const all = [...buttons.values()];
+    all.forEach((b) => { b.disabled = true; b.querySelector('.kx-label').textContent = 'Opening review…'; });
     try {
       const r = await api.runtime.sendMessage({ type: 'kx-review', players: players() });
       if (!r?.ok && !auto) toast(r?.error || 'Something went wrong.');
     } finally {
-      btn.disabled = false;
-      btn.querySelector('span').textContent = 'Review in Kinetix';
+      all.forEach((b) => { b.disabled = false; b.querySelector('.kx-label').textContent = LABEL; });
     }
   }
 
-  function place() {
+  // Spots next to the site's own post-game buttons, like other review extensions use.
+  function slots() {
+    if (site === 'chesscom') {
+      return [...document.querySelectorAll('.game-review-buttons-component, .game-over-modal-shell-buttons')]
+        .map((c) => ({ c, ref: c.querySelector('a, button'), kind: 'cc' }));
+    }
+    return [...document.querySelectorAll('.rcontrols .follow-up')].map((c) => ({ c, ref: c.firstElementChild, kind: 'li' }));
+  }
+
+  function make(kind, ref) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.title = 'Open a full Game Review of this finished game on Kinetix (Alt+Shift+K)';
+    if (kind === 'cc') {
+      // Borrow chess.com's own button classes (secondary look, same size as Game Review).
+      b.className = `${(ref?.className || '').replace(/primary/g, 'secondary')} kx-side kx-cc`;
+      ['data-size', 'data-full-width', 'data-align'].forEach((a) => ref?.hasAttribute(a) && b.setAttribute(a, ref.getAttribute(a)));
+      b.setAttribute('data-variant', 'secondary');
+    } else if (kind === 'li') {
+      b.className = 'fbt kx-side kx-li';
+    } else {
+      b.className = 'kx-btn';
+    }
+    b.innerHTML = `<img alt="" src="${api.runtime.getURL('icons/icon-48.png')}"><span class="kx-label">${LABEL}</span>`;
+    b.addEventListener('click', () => review(false));
+    return b;
+  }
+
+  function placeFloat() {
+    const btn = buttons.get('float');
     if (!btn) return;
-    const b = board();
-    const r = b?.getBoundingClientRect();
+    const r = board()?.getBoundingClientRect();
     if (r && r.width > 100) {
       btn.style.position = 'fixed';
       btn.style.left = `${Math.min(window.innerWidth - btn.offsetWidth - 8, r.right - btn.offsetWidth)}px`;
@@ -63,19 +94,22 @@
   }
 
   function ensure() {
-    // The button shows on game pages; the review itself refuses unfinished games.
-    const show = isGamePage();
-    if (!show) { btn?.remove(); btn = null; return; }
-    if (!btn) {
-      btn = document.createElement('button');
-      btn.className = 'kx-btn';
-      btn.type = 'button';
-      btn.title = 'Open a full Game Review of this finished game on Kinetix (Alt+Shift+K)';
-      btn.innerHTML = `<img alt="" src="${api.runtime.getURL('icons/icon-48.png')}"><span>Review in Kinetix</span>`;
-      btn.addEventListener('click', () => review(false));
-      document.documentElement.appendChild(btn);
+    // Buttons show on game pages; the review itself refuses unfinished games.
+    if (!isGamePage()) { buttons.forEach((b) => b.remove()); buttons.clear(); return; }
+    const found = slots();
+    for (const [key, b] of buttons) if (key !== 'float' && (!key.isConnected || !b.isConnected)) { b.remove(); buttons.delete(key); }
+    for (const { c, ref, kind } of found) {
+      if (buttons.has(c)) continue;
+      const b = make(kind, ref);
+      // Above the site's main button (Game Review on chess.com), matching its width.
+      c.insertBefore(b, ref || null);
+      buttons.set(c, b);
     }
-    place();
+    // Floating pill only while the page has no post-game button row to join.
+    const docked = [...buttons.keys()].some((k) => k !== 'float');
+    if (docked) { buttons.get('float')?.remove(); buttons.delete('float'); }
+    else if (!buttons.has('float')) { const b = make('float'); document.documentElement.appendChild(b); buttons.set('float', b); }
+    placeFloat();
   }
 
   async function maybeAuto() {
@@ -100,7 +134,7 @@
     maybeAuto();
   };
   new MutationObserver(() => { clearTimeout(tick.t); tick.t = setTimeout(tick, 300); }).observe(document.documentElement, { childList: true, subtree: true });
-  window.addEventListener('resize', place);
-  window.addEventListener('scroll', place, { passive: true });
+  window.addEventListener('resize', placeFloat);
+  window.addEventListener('scroll', placeFloat, { passive: true });
   tick();
 })();
