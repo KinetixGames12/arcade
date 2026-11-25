@@ -1207,6 +1207,7 @@ function leaveOnline() {
 }
 
 function openOnline(id) {
+  stopSeek();
   leaveOnline();
   stopAnalysis();
   engine?.stop();
@@ -1311,6 +1312,9 @@ $('#pool').addEventListener('click', async (e) => {
   $('#seekCancel').onclick = stopSeek;
   try {
     await li.stream('/api/board/seek', () => {}, { method: 'POST', form: { time: tc.t, increment: tc.i, rated: $('#seekRated').checked, variant: 'standard' }, signal: ctl.signal });
+    // Lichess closes the seek when someone accepts it (or it expires): stop showing "Looking for…".
+    if (seekAbort === ctl) stopSeek();
+    refreshPlaying();
   } catch (err) {
     if (!ctl.signal.aborted) {
       st.innerHTML = `Lichess said: ${esc(err.message)}`;
