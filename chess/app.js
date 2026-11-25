@@ -1,6 +1,6 @@
 // Kinetix Chess: bots, Lichess play, Stockfish analysis, Game Review and Learn.
 import { Chess, DEFAULT_POSITION } from './vendor/chess.js?v=2';
-import { Board, PIECE_SETS } from './board.js?v=4';
+import { Board, PIECE_SETS } from './board.js?v=5';
 import * as snd from './sounds.js?v=1';
 import { buildReview, coachNote } from './review.js?v=1';
 import { CLASSES, ORDER, badgeSvg } from './badges.js?v=1';

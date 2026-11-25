@@ -118,20 +118,6 @@
 
     <div class="panel" data-panel="learn"><div id="learnPanel"></div></div>
 
-    <div class="panel" data-panel="analyze">
-      <h2 class="ar-display">Analysis</h2>
-      <p class="muted">Move pieces freely, or paste a PGN or FEN. Right-click to draw arrows (Shift green, Ctrl blue, Alt yellow).</p>
-      <textarea id="importText" class="ar-input" rows="3" placeholder="Paste PGN or FEN" spellcheck="false"></textarea>
-      <div class="row gap">
-        <button class="btn primary" id="importBtn">Load</button>
-        <button class="btn" id="newBoard">New board</button>
-        <button class="btn" id="copyPgn">Copy PGN</button>
-        <button class="btn" id="copyFen">Copy FEN</button>
-      </div>
-      <div class="ext-card"><div><b>Review chess.com &amp; Lichess games</b><span class="muted small">Get the free browser extension: one click sends a finished game here for a full Game Review.</span></div><button class="btn primary" type="button" data-ext>Get it</button></div>
-      <div class="bookbox"><h3>Opening explorer</h3><div id="book" class="book"></div></div>
-    </div>
-
     <div class="panel" data-panel="games">
       <h2 class="ar-display">Games</h2>
       <div class="row gap">
@@ -182,6 +168,21 @@
       <div id="cloud" class="muted small"></div>
       <div id="lines" class="lines"></div>
     </section>
+
+    <!-- After the game and engine cards: the game being analyzed matters more than loading a new one. -->
+    <div class="panel" data-panel="analyze">
+      <h2 class="ar-display">Analysis</h2>
+      <p class="muted">Move pieces freely, or paste a PGN or FEN. Right-click to draw arrows (Shift green, Ctrl blue, Alt yellow).</p>
+      <textarea id="importText" class="ar-input" rows="3" placeholder="Paste PGN or FEN" spellcheck="false"></textarea>
+      <div class="row gap">
+        <button class="btn primary" id="importBtn">Load</button>
+        <button class="btn" id="newBoard">New board</button>
+        <button class="btn" id="copyPgn">Copy PGN</button>
+        <button class="btn" id="copyFen">Copy FEN</button>
+      </div>
+      <div class="ext-card"><div><b>Review chess.com &amp; Lichess games</b><span class="muted small">Get the free browser extension: one click sends a finished game here for a full Game Review.</span></div><button class="btn primary" type="button" data-ext>Get it</button></div>
+      <div class="bookbox"><h3>Opening explorer</h3><div id="book" class="book"></div></div>
+    </div>
   </aside>
 </main>
 
@@ -239,6 +240,6 @@
 <div class="toast" id="toast" hidden></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.1/dist/umd/supabase.js" integrity="sha384-cP+QrKcaFzs7aIG1IzHGLKC5cjjlA05fYF2E7C0hqeDvsLKzwgYAS1cYhsDQB+L1" crossorigin="anonymous"></script>
 <script src="../shared/config.js?v=1"></script>
-<script type="module" src="app.js?v=9"></script>
+<script type="module" src="app.js?v=10"></script>
 </body>
 </html>
