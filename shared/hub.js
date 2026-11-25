@@ -1,4 +1,4 @@
-import { GAMES } from './games.js?v=6';
+import { GAMES } from './games.js?v=7';
 import { dayNumber } from '../daily/daily.js?v=2';
 import { mountAccount } from './account.js?v=5';
 

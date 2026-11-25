@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <radialGradient id="d" cx=".35" cy=".3" r=".8"><stop offset=".35" stop-color="#ff3d8b"/><stop offset="1" stop-color="#b5125a"/></radialGradient>
+    <radialGradient id="l" cx=".35" cy=".3" r=".8"><stop offset=".35" stop-color="#fdf8ee"/><stop offset="1" stop-color="#d9ccb0"/></radialGradient>
+    <pattern id="b" width="80" height="80" patternUnits="userSpaceOnUse"><rect width="80" height="80" fill="#efe6d6"/><rect width="40" height="40" fill="#3b2f57"/><rect x="40" y="40" width="40" height="40" fill="#3b2f57"/></pattern>
+  </defs>
+  <rect width="400" height="250" fill="#120f26"/>
+  <g transform="translate(40 -30) rotate(12 160 160)"><rect width="320" height="320" fill="url(#b)" opacity=".95"/></g>
+  <g stroke="rgba(0,0,0,.25)" stroke-width="3">
+    <circle cx="130" cy="150" r="30" fill="url(#d)"/><circle cx="210" cy="104" r="30" fill="url(#l)"/>
+    <circle cx="282" cy="168" r="30" fill="url(#d)"/><circle cx="292" cy="160" r="30" fill="url(#d)"/>
+  </g>
+  <path d="M276 150l9 7 7-11 7 11 9-7-3 18h-26z" fill="#d4ff3f" stroke="#11140a" stroke-width="1.5"/>
+  <path d="M150 134q30-40 50-36" fill="none" stroke="#d4ff3f" stroke-width="4" stroke-dasharray="7 7" stroke-linecap="round"/>
+</svg>

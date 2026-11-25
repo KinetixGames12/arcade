@@ -1,0 +1,44 @@
+/* Kinetix Checkers. Board stays wood-and-ink in both themes. */
+.ck-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; max-width: 1060px; margin: 0 auto; padding: 18px 16px 40px; align-items: start; }
+.ck-board-col { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.ck-player { display: flex; align-items: center; gap: 10px; width: min(620px, 100%); font-size: 15px; min-height: 28px; }
+.ck-turn { margin-left: auto; font-style: normal; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 99px; background: var(--volt); color: var(--volt-ink); }
+.ck-chip { width: 18px; height: 18px; border-radius: 50%; }
+.ck-chip.d, .ck-pc.d { --pc: #ff3d8b; --pc2: #b5125a; }
+.ck-chip.l, .ck-pc.l { --pc: #fdf8ee; --pc2: #d9ccb0; }
+.ck-chip { background: radial-gradient(circle at 35% 30%, var(--pc), var(--pc2)); box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+.ck-board { display: grid; grid-template-columns: repeat(8, 1fr); width: min(620px, 100%, calc(100dvh - 170px)); aspect-ratio: 1; border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-lg); user-select: none; -webkit-user-select: none; }
+.ck-sq { position: relative; display: grid; place-items: center; }
+.ck-sq.lt { background: #efe6d6; }
+.ck-sq.dk { background: #3b2f57; }
+.ck-sq.last::before { content: ''; position: absolute; inset: 0; background: rgba(212, 255, 63, .22); }
+.ck-sq.sel::before { content: ''; position: absolute; inset: 0; background: rgba(212, 255, 63, .38); }
+.ck-pc { position: relative; width: 80%; height: 80%; border-radius: 50%; border: 0; padding: 0; cursor: default; background: radial-gradient(circle at 35% 30%, var(--pc) 0 40%, var(--pc2) 100%); box-shadow: inset 0 -4px 0 rgba(0,0,0,.25), inset 0 0 0 4px rgba(255,255,255,.12), 0 4px 8px rgba(0,0,0,.45); animation: ck-in .25s var(--ease); }
+.ck-pc::after { content: ''; position: absolute; inset: 22%; border-radius: 50%; border: 2px solid rgba(0,0,0,.14); }
+.ck-pc.king::after { inset: 18%; border: 0; background: no-repeat center / 70% url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23d4ff3f' stroke='%2311140a' stroke-width='1.2' d='M3.5 8.5 8 12l4-6.5 4 6.5 4.5-3.5-1.8 10H5.3z'/%3E%3C/svg%3E"); }
+.ck-pc.can { cursor: pointer; box-shadow: inset 0 -4px 0 rgba(0,0,0,.25), 0 0 0 3px rgba(212, 255, 63, .75), 0 4px 10px rgba(0,0,0,.45); }
+.ck-pc.can:hover { transform: translateY(-2px); }
+.ck-sq.sel .ck-pc { transform: translateY(-3px) scale(1.04); }
+.ck-dot { position: absolute; inset: 0; margin: auto; width: 34%; height: 34%; border-radius: 50%; border: 0; background: rgba(212, 255, 63, .85); cursor: pointer; box-shadow: 0 0 0 6px rgba(212, 255, 63, .25); animation: ck-in .2s var(--ease); }
+.ck-sq.gone::after { content: ''; position: absolute; width: 40%; height: 40%; border-radius: 50%; border: 2px dashed rgba(255,255,255,.35); }
+@keyframes ck-in { from { transform: scale(.6); opacity: 0; } }
+.ck-side { padding: 20px; display: flex; flex-direction: column; gap: 12px; position: sticky; top: 76px; }
+.ck-side h2 { margin: 0; font-size: 24px; }
+.ck-side p { margin: 0; }
+.ck-opp { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0; }
+.ck-opp button { display: flex; flex-direction: column; gap: 2px; padding: 10px 6px; border-radius: var(--r); border: 1.5px solid var(--line); background: var(--panel-2); color: var(--text); font: inherit; cursor: pointer; }
+.ck-opp button span { font-size: 11px; color: var(--muted); }
+.ck-opp button[aria-checked="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--panel)); }
+.ck-wide { width: 100%; margin-top: 12px; }
+.ck-record { font-size: 13px; color: var(--muted); margin-top: 8px; }
+.ck-status { font-size: 16px; min-height: 48px; }
+.ck-think::after { content: '…'; animation: ar-blink 1s infinite; }
+.ck-tools { display: flex; flex-wrap: wrap; gap: 8px; }
+.ck-moves { list-style: none; margin: 4px 0 0; padding: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; max-height: 260px; overflow-y: auto; border-radius: var(--r); background: var(--panel-2); font: 13px/1.6 var(--mono); }
+.ck-moves:empty { display: none; }
+.ck-moves span { color: var(--muted); margin-right: 6px; }
+@media (max-width: 900px) {
+  .ck-layout { grid-template-columns: 1fr; padding: 10px 10px 32px; gap: 14px; }
+  .ck-board { width: 100%; }
+  .ck-side { position: static; }
+}
