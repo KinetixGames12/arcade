@@ -1,11 +1,15 @@
-import { GAMES } from './games.js?v=5';
+import { GAMES } from './games.js?v=6';
+import { dayNumber } from '../daily/daily.js?v=2';
 import { mountAccount } from './account.js?v=5';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const grid = document.getElementById('games');
+const today = dayNumber();
+const doneToday = (slug) => { try { return JSON.parse(localStorage.getItem(`kx.${slug}.stats`))?.last === today; } catch { return false; } };
 grid.innerHTML = GAMES.map((g, i) => {
-  const tags = (g.tags || []).map((t) => `<span class="ar-chip">${esc(t)}</span>`).join('');
+  const tags = (g.tags || []).filter((t) => !(g.daily && t === 'Daily')).map((t) => `<span class="ar-chip">${esc(t)}</span>`).join('')
+    + (g.daily ? (doneToday(g.slug) ? '<span class="ar-chip g-done">✓ Done today</span>' : '<span class="ar-chip g-new">New today</span>') : '');
   const inner = `
     <span class="g-art"><img src="shared/art/${esc(g.slug)}.svg?v=1" alt="" loading="${i < 3 ? 'eager' : 'lazy'}" width="400" height="250"></span>
     <span class="g-body">

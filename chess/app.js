@@ -198,6 +198,7 @@ function fmtEval(ev) {
 
 /* ── rendering ───────────────────────────────────────────────── */
 function render() {
+  syncAnalyzeTab();
   if (G.mode === 'learn') {
     const lp = G.lp;
     board.set({ fen: lp.fen, orientation: lp.orientation, lastMove: lp.lastMove, check: checkSq(lp.fen), movable: !!lp.movable, premovable: false, color: turnOf(lp.fen), arrows: lp.arrows || [], badge: null });
@@ -591,6 +592,7 @@ function saveGame(source, extra = {}) {
 }
 
 function loadGameInto(entry, { review = false } = {}) {
+  if (blockIfInGame()) return;
   stopAnalysis();
   leaveOnline();
   const startFen = entry.startFen || DEFAULT_POSITION;
@@ -644,7 +646,17 @@ let analysedFen = null;
 let cloud = null; // { fen, data }
 let reviewRun = null;
 
-const analysisAllowed = () => !G.live && G.mode !== 'learn';
+// Fair play: no engine, explorer or analysis board while you have a game going
+// here or on Lichess (G.live covers bot and online games on screen; lichessOngoing
+// covers Lichess games you navigated away from).
+let lichessOngoing = 0;
+const inGame = () => (G.live && (G.mode === 'bot' || G.mode === 'online')) || lichessOngoing > 0;
+const analysisAllowed = () => !G.live && G.mode !== 'learn' && !inGame();
+function blockIfInGame() {
+  if (!inGame()) return false;
+  toast('Analysis is off while you have a game going. Finish or resign it first.', 3500);
+  return true;
+}
 
 function stopAnalysis() {
   analysedFen = null;
@@ -1193,6 +1205,8 @@ async function refreshPlaying() {
   try {
     const data = await li.api('/api/account/playing');
     const list = data?.nowPlaying || [];
+    lichessOngoing = list.length;
+    syncAnalyzeTab();
     $('#playing').innerHTML = list.length
       ? list.map((g) => `<div class="item" data-gid="${esc(g.gameId)}"><div><b>${esc(g.opponent?.username)}</b> <span class="muted">${esc(g.opponent?.rating ?? '')}</span><br><span class="muted small">${esc(g.speed)} · ${g.isMyTurn ? 'your move' : 'their move'}</span></div><button>Open</button></div>`).join('')
       : '<p class="muted small">None.</p>';
@@ -1430,6 +1444,7 @@ $('#liGames').addEventListener('click', (e) => {
 
 /* ── analysis panel ──────────────────────────────────────────── */
 function newAnalysis(startFen = DEFAULT_POSITION, moves = [], meta = {}) {
+  if (blockIfInGame()) return;
   stopAnalysis();
   leaveOnline();
   Object.assign(G, {
@@ -1479,6 +1494,7 @@ function decodeB64url(s) {
   return new TextDecoder().decode(Uint8Array.from(b, (ch) => ch.charCodeAt(0)));
 }
 async function openImportLink(hash) {
+  if (inGame()) return;
   let pgn = null, lichessId = null;
   try {
     if (hash.startsWith('#review=')) pgn = decodeB64url(hash.slice(8));
@@ -1627,7 +1643,12 @@ $('#premoveOn').checked = settings.premove;
 window.ArcadeTheme?.mount($('#themeBtn'));
 
 /* ── tabs ────────────────────────────────────────────────────── */
+function syncAnalyzeTab() {
+  const t = document.querySelector('.tabs [data-tab="analyze"]');
+  if (t) { t.classList.toggle('locked', inGame()); t.title = inGame() ? 'Analysis is off during a game' : ''; }
+}
 function showTab(name, keepGame) {
+  if (name === 'analyze' && blockIfInGame()) name = G.mode === 'online' || (!G.live && lichessOngoing) ? 'online' : 'play';
   if (name === 'learn' && G.live) { toast('Finish or resign your game first.'); name = G.mode === 'online' ? 'online' : 'play'; }
   if (name === 'learn' && G.mode !== 'learn') {
     stopAnalysis(); leaveOnline();
