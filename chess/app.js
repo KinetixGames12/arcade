@@ -219,7 +219,9 @@ function render() {
     fen, orientation: G.orientation, lastMove: last ? [last.from, last.to] : null, check, movable: canMove(), premovable: canPremove(),
     color: G.live || G.retry ? (G.retry ? turnOf(fen) : G.myColor) : turnOf(fen), arrows: currentArrows(), badge: cls && last ? { square: last.to, cls } : null,
   });
-  if (!canPremove() && G.premove) { G.premove = null; board.setPremove(null); }
+  // Keep a queued premove when it just became our turn: firePremove() plays it right after this render.
+  const premoveAlive = settings.premove && G.live && (G.mode === 'online' || G.mode === 'bot') && G.cursor === G.moves.length;
+  if (!premoveAlive && G.premove) { G.premove = null; board.setPremove(null); }
   renderPlayers();
   renderMoves();
   renderStatus();
