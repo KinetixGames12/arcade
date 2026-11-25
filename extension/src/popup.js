@@ -18,3 +18,4 @@ $('#go').addEventListener('click', async () => {
 const { autoOpen } = await api.storage.local.get('autoOpen');
 $('#auto').checked = !!autoOpen;
 $('#auto').addEventListener('change', (e) => api.storage.local.set({ autoOpen: e.target.checked }));
+document.getElementById('ver').textContent = `Version ${(globalThis.browser ?? globalThis.chrome).runtime.getManifest().version}`;
