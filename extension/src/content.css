@@ -4,3 +4,10 @@
 .kx-btn img { width: 24px; height: 24px; border-radius: 7px; }
 .kx-toast { position: fixed; left: 50%; bottom: 72px; transform: translateX(-50%) translateY(12px); opacity: 0; z-index: 2147483001; max-width: min(460px, calc(100vw - 32px)); padding: 11px 16px; border-radius: 14px; background: #13111f; color: #f2f0fb; font: 600 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; box-shadow: 0 16px 40px rgba(0,0,0,.4); transition: opacity .2s, transform .2s; pointer-events: none; }
 .kx-toast.show { opacity: 1; transform: translateX(-50%); }
+/* Docked next to the site's own post-game buttons. */
+.kx-side img { width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0; }
+.kx-cc { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; cursor: pointer; }
+.kx-cc .kx-label { font-weight: 800; }
+.kx-cc:disabled { opacity: .7; cursor: progress; }
+.kx-li { display: flex !important; align-items: center; justify-content: center; gap: 8px; width: 100%; }
+.kx-li img { width: 20px; height: 20px; border-radius: 5px; }
