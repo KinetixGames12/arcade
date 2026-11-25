@@ -7,6 +7,7 @@ export const GAMES = [
   { slug: 'checkers', name: 'Checkers', blurb: 'Classic checkers against five bots from beginner to brutal, or pass the device to a friend.', accent: '#ff3d8b', tags: ['Bots', '2 players'] },
   { slug: 'lexo', daily: true, name: 'Lexo', blurb: 'Crack the hidden five-letter word in six tries. A new word every day.', accent: '#3fbf6b', tags: ['Daily', 'Words'] },
   { slug: 'warmer', daily: true, name: 'Warmer', blurb: 'Guess the mystery country. Every guess glows hotter the closer you get.', accent: '#ff7832', tags: ['Daily', 'Geography'] },
+  { slug: 'deepcut', daily: true, name: 'Deep Cut', blurb: 'Seven quick prompts. Any answer counts, but the rarer yours is among today’s players, the more it scores.', accent: '#2a6cff', tags: ['Daily', 'Trivia'] },
   { slug: 'quads', daily: true, name: 'Quads', blurb: 'Sixteen words, four hidden groups. Find what links them before you run out of mistakes.', accent: '#9cc8ff', tags: ['Daily', 'Words'] },
   { slug: 'bigger', daily: true, name: 'Bigger?', blurb: 'Two countries, one question: which is bigger? Ten rounds a day, or go for a streak.', accent: '#3ef0c8', tags: ['Daily', 'Quick'] },
   { slug: 'fantasy-football', name: 'Fantasy Football', blurb: 'Start a league with friends, run a live snake draft, then set lineups and trade through the NFL season.', accent: '#22c55e', tags: ['NFL', 'Leagues', 'Live draft'] },
