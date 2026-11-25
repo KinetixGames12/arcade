@@ -99,7 +99,7 @@ export class Board {
       const cls = ['cb-sq', light ? 'l' : 'd'];
       if (lastMove && (sq === lastMove[0] || sq === lastMove[1])) cls.push('last');
       if (sq === this.selected) cls.push('sel');
-      if (sq === check) cls.push('check');
+      if (sq === check) cls.push('incheck');
       if (this.premove && (sq === this.premove.from || sq === this.premove.to)) cls.push('pre');
       if (dests.has(sq)) cls.push(pieces[sq] ? 'cap' : 'dest');
       if (this.shapes.marks[sq]) cls.push(`mk-${this.shapes.marks[sq]}`);

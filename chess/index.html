@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="../shared/brand/apple-touch-icon.png">
 <link rel="stylesheet" href="../shared/arcade.css?v=2">
 <link rel="stylesheet" href="../shared/account.css?v=2">
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=5">
 <script src="../shared/theme.js?v=1"></script>
 </head>
 <body>
@@ -26,8 +26,9 @@
     <button role="tab" data-tab="games">Games</button>
   </nav>
   <span class="ar-spacer"></span>
-  <button class="ar-icon-btn" id="setBtn" aria-label="Board settings" title="Board, pieces and sound">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>
+  <button class="ar-btn ghost sm ext-btn" id="extBtn" type="button" title="Review your chess.com and Lichess games here">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3.5a2 2 0 0 1 4 0V5h3.5A1.5 1.5 0 0 1 18 6.5V10h1.5a2 2 0 0 1 0 4H18v3.5a1.5 1.5 0 0 1-1.5 1.5H13v-1.5a2 2 0 0 0-4 0V19H5.5A1.5 1.5 0 0 1 4 17.5V14h1.5a2 2 0 0 0 0-4H4V6.5A1.5 1.5 0 0 1 5.5 5H9z"/></svg>
+    <span>Extension</span>
   </button>
   <span id="themeBtn"></span>
   <div class="acct" id="acct"></div>
@@ -48,6 +49,9 @@
       <button data-nav="next" aria-label="Next move" title="Forward (→)">▶</button>
       <button data-nav="end" aria-label="Last move" title="Last (↓ / End)">⏭</button>
       <button data-nav="flip" aria-label="Flip board" title="Flip (F)">⇅</button>
+      <button id="setBtn" type="button" aria-label="Board style: colours, pieces and sound" title="Board style">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 0 0 0 18c1.1 0 1.8-.8 1.8-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.7 1.7-1.7H16a5 5 0 0 0 5-5c0-4-4-7.2-9-7.2z"/><circle cx="7.5" cy="11.5" r="1.3"/><circle cx="10" cy="7.5" r="1.3"/><circle cx="14.5" cy="7.5" r="1.3"/><circle cx="17" cy="11" r="1.3"/></svg>
+      </button>
     </div>
   </section>
 
@@ -124,6 +128,7 @@
         <button class="btn" id="copyPgn">Copy PGN</button>
         <button class="btn" id="copyFen">Copy FEN</button>
       </div>
+      <div class="ext-card"><div><b>Review chess.com &amp; Lichess games</b><span class="muted small">Get the free browser extension: one click sends a finished game here for a full Game Review.</span></div><button class="btn primary" type="button" data-ext>Get it</button></div>
       <div class="bookbox"><h3>Opening explorer</h3><div id="book" class="book"></div></div>
     </div>
 
@@ -134,6 +139,7 @@
         <button class="btn" id="impBtn">Load recent games</button>
       </div>
       <div id="liGames" class="list"></div>
+      <div class="ext-card"><div><b>Review chess.com &amp; Lichess games</b><span class="muted small">Get the free browser extension: one click sends a finished game here for a full Game Review.</span></div><button class="btn primary" type="button" data-ext>Get it</button></div>
       <h3>Played here</h3>
       <div id="history" class="list"></div>
     </div>
@@ -181,7 +187,7 @@
 
 <dialog class="ch-dialog" id="setDialog">
   <form method="dialog" class="ch-set">
-    <h2 class="ar-display">Board settings</h2>
+    <h2 class="ar-display">Board style</h2>
     <fieldset><legend>Board</legend><div class="swatches" id="themeList"></div></fieldset>
     <fieldset><legend>Pieces</legend><div class="pieceset" id="pieceList"></div></fieldset>
     <label class="check"><input type="checkbox" id="soundOn"> Sounds</label>
@@ -189,6 +195,39 @@
     <label class="check"><input type="checkbox" id="animOn"> Animate moves</label>
     <p class="muted small">Keyboard: ← → step through moves, ↑ ↓ (or Home / End) jump to the start or end, F flips the board. On touch screens, swipe left or right below the board.</p>
     <div class="row end"><button class="ar-btn">Done</button></div>
+  </form>
+</dialog>
+
+<dialog class="ch-dialog" id="extDialog" aria-labelledby="extTitle">
+  <form method="dialog" class="ch-set ext">
+    <h2 class="ar-display" id="extTitle">Kinetix Review extension</h2>
+    <p>Adds a <b>Review in Kinetix</b> button to finished games on chess.com and lichess.org. One click opens the game here with accuracy, every move graded and plain-English explanations.</p>
+    <p class="muted small">Finished games only, never during a live game. No tracking, no account needed.</p>
+    <div class="ar-tabs ext-tabs" role="tablist" aria-label="Browser">
+      <button type="button" role="tab" data-ext-b="chrome" aria-selected="true">Chrome · Edge · Brave</button>
+      <button type="button" role="tab" data-ext-b="firefox" aria-selected="false">Firefox</button>
+    </div>
+    <div data-ext-p="chrome">
+      <a class="ar-btn wide" href="../extension/dist/kinetix-review-chrome.zip" download>Download for Chrome</a>
+      <ol>
+        <li>Unzip the download (double-click it). You get a folder.</li>
+        <li>Open <code>chrome://extensions</code> in the address bar (Edge: <code>edge://extensions</code>, Brave: <code>brave://extensions</code>).</li>
+        <li>Turn on <b>Developer mode</b> (top right).</li>
+        <li>Click <b>Load unpacked</b> and pick the unzipped folder.</li>
+        <li>Optional: pin <b>Kinetix Game Review</b> from the puzzle-piece menu.</li>
+      </ol>
+    </div>
+    <div data-ext-p="firefox" hidden>
+      <a class="ar-btn wide" href="../extension/dist/kinetix-review-firefox.zip" download>Download for Firefox</a>
+      <ol>
+        <li>Keep the zip as it is (don't unzip).</li>
+        <li>Open <code>about:debugging#/runtime/this-firefox</code> in the address bar.</li>
+        <li>Click <b>Load Temporary Add-on…</b> and pick the zip.</li>
+      </ol>
+      <p class="muted small">Firefox removes it when it restarts, so you'd load it again next time.</p>
+    </div>
+    <p class="muted small">Shortcut on a game page: <b>Alt+Shift+K</b>. Phones can't run extensions: paste a PGN into Analysis instead.</p>
+    <div class="row end"><button class="ar-btn ghost">Close</button></div>
   </form>
 </dialog>
 
@@ -200,6 +239,6 @@
 <div class="toast" id="toast" hidden></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.1/dist/umd/supabase.js" integrity="sha384-cP+QrKcaFzs7aIG1IzHGLKC5cjjlA05fYF2E7C0hqeDvsLKzwgYAS1cYhsDQB+L1" crossorigin="anonymous"></script>
 <script src="../shared/config.js?v=1"></script>
-<script type="module" src="app.js?v=5"></script>
+<script type="module" src="app.js?v=6"></script>
 </body>
 </html>
