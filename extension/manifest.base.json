@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Kinetix Game Review",
+  "short_name": "Kinetix",
+  "version": "1.0.0",
+  "description": "Send any finished chess.com or Lichess game to Kinetix Chess for a free Game Review. Finished games only, no tracking.",
+  "icons": { "16": "icons/icon-16.png", "32": "icons/icon-32.png", "48": "icons/icon-48.png", "128": "icons/icon-128.png" },
+  "action": { "default_title": "Review this game in Kinetix", "default_popup": "popup.html", "default_icon": { "16": "icons/icon-16.png", "32": "icons/icon-32.png" } },
+  "permissions": ["storage"],
+  "host_permissions": ["https://lichess.org/*", "https://www.chess.com/*", "https://api.chess.com/*"],
+  "content_scripts": [{
+    "matches": ["https://lichess.org/*", "https://www.chess.com/*"],
+    "js": ["content.js"], "css": ["content.css"], "run_at": "document_idle"
+  }],
+  "web_accessible_resources": [{ "resources": ["icons/icon-48.png"], "matches": ["https://lichess.org/*", "https://www.chess.com/*"] }],
+  "commands": {
+    "review-game": { "suggested_key": { "default": "Alt+Shift+K" }, "description": "Review the game in this tab on Kinetix" }
+  }
+}
