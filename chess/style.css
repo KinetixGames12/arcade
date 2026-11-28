@@ -191,6 +191,17 @@ body.noanim .cb-piece.anim { transition: none; }
 .moves .mv.on { background: color-mix(in srgb, var(--accent) 22%, transparent); box-shadow: inset 0 -2px 0 var(--accent); }
 .moves .mv .badge-ic { width: 16px; height: 16px; flex-shrink: 0; }
 .moves .res { grid-column: 1 / -1; text-align: center; padding: 6px; }
+/* Sideline (variation) row inside the move grid */
+.moves .var { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; padding: 6px 10px 6px 24px; margin: 2px 0; border-left: 3px solid var(--accent); background: var(--bg-2); font-size: 13px; }
+.moves .var .vno { color: var(--muted); font-size: 12px; }
+.moves .var .vmv { display: inline-flex; align-items: center; gap: 4px; padding: 3px 6px; border: 0; border-radius: 6px; background: none; color: var(--text); cursor: pointer; font: 600 13px/1.2 var(--font); }
+.moves .var .vmv:hover { background: var(--panel-2); }
+.moves .var .vmv.on { background: color-mix(in srgb, var(--accent) 26%, transparent); }
+.moves .var .vmv .badge-ic { width: 14px; height: 14px; }
+.moves .var-act { display: inline-flex; gap: 4px; margin-left: auto; }
+.moves .var-act button { padding: 3px 8px; border-radius: 99px; border: 1px solid var(--line); background: var(--panel-2); color: var(--muted); cursor: pointer; font: 600 12px/1.2 var(--font); }
+.moves .var-act button:hover { color: var(--text); }
+.rv-tag { align-self: center; font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--accent); }
 .moves .empty { grid-column: 1 / -1; }
 .coach { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; margin-bottom: 10px; border-radius: var(--r); background: var(--panel-2); border: 1px solid var(--line); font-size: 14px; animation: rise .3s var(--ease); }
 .coach p { margin: 0; }
@@ -222,6 +233,12 @@ body.noanim .cb-piece.anim { transition: none; }
 .rv-counts th { text-align: left; font-weight: 600; display: flex; align-items: center; gap: 8px; padding: 3px 0; }
 .rv-counts th .badge-ic { width: 18px; height: 18px; }
 .rv-counts tr.zero td { color: var(--muted); font-weight: 400; }
+.rv-perf { width: 100%; border-collapse: collapse; font-size: 14px; margin: 4px 0 10px; }
+.rv-perf td { padding: 4px 6px; text-align: center; font: 800 15px/1 var(--font-display); width: 30%; }
+.rv-perf th { font-weight: 600; color: var(--muted); padding: 4px 0; }
+.rv-perf tr + tr { border-top: 1px solid var(--line); }
+.rv-perf tr.overall th { color: var(--text); font-weight: 800; }
+.rv-perf tr.overall td { font-size: 18px; }
 .graph { display: block; width: 100%; height: 80px; border-radius: 10px; cursor: pointer; margin: 6px 0 10px; }
 .graph .bg { fill: #26262c; } .graph .area { fill: #f4f4f4; } .graph .mid { stroke: rgba(128,128,128,.6); stroke-width: .6; } .graph .cur { stroke: var(--accent); stroke-width: 1.6; }
 .graph circle { stroke: #fff; stroke-width: .6; }

@@ -57,6 +57,55 @@ function evalWords(ev, side) {
   return 'a losing position';
 }
 
+// Per-move accuracy from the drop in win% (0–100).
+const moveAcc = (drop) => Math.max(0, Math.min(100, 103.1668 * Math.exp(-0.04354 * drop) - 3.1669));
+// Blend of mean and harmonic mean, so one blunder weighs more than in a plain average.
+function gameAcc(a) {
+  if (!a.length) return 100;
+  const mean = a.reduce((s, x) => s + x, 0) / a.length;
+  const harm = a.length / a.reduce((s, x) => s + 1 / Math.max(x, 1), 0);
+  return (mean + harm) / 2;
+}
+
+// Rough accuracy → rating curve (piecewise linear). Not a real rating; one game is a tiny sample.
+const ACC_ELO = [[40, 250], [55, 600], [65, 900], [72, 1200], [78, 1500], [83, 1800], [87, 2050], [91, 2350], [94, 2600], [97, 2850], [100, 3000]];
+export function accToRating(acc) {
+  if (acc <= ACC_ELO[0][0]) return ACC_ELO[0][1];
+  for (let k = 1; k < ACC_ELO.length; k++) {
+    const [a1, e1] = ACC_ELO[k], [a0, e0] = ACC_ELO[k - 1];
+    if (acc <= a1) return Math.round((e0 + ((acc - a0) / (a1 - a0)) * (e1 - e0)) / 50) * 50;
+  }
+  return ACC_ELO[ACC_ELO.length - 1][1];
+}
+
+// Non-pawn, non-king piece count (both sides) — drives the game-phase split.
+const pieceCount = (fen) => [...fen.split(' ')[0]].filter((ch) => 'nbrqNBRQ'.includes(ch)).length;
+
+// Estimated performance rating per phase and overall, for each side.
+// fens[i] is the position before move i+1; evals[i] its eval; cls[i] the move's class.
+// Book moves are skipped (they say nothing about skill). A phase with fewer than 3 own moves gets null.
+export function phaseRatings({ fens, evals, cls }) {
+  const turn = (f) => f.split(' ')[1];
+  const by = { opening: { w: [], b: [] }, middlegame: { w: [], b: [] }, endgame: { w: [], b: [] } };
+  const all = { w: [], b: [] };
+  let phase = 'opening';
+  for (let i = 0; i < cls.length; i++) {
+    const pieces = pieceCount(fens[i]);
+    if (phase === 'opening' && cls[i] !== 'book' && (i >= 20 || pieces <= 10)) phase = 'middlegame';
+    if (phase !== 'endgame' && pieces <= 6) phase = 'endgame';
+    if (cls[i] === 'book') continue;
+    const side = turn(fens[i]);
+    const acc = moveAcc(Math.max(0, forSide(evals[i], side) - forSide(evals[i + 1], side)));
+    by[phase][side].push(acc);
+    all[side].push(acc);
+  }
+  const rate = (a) => (a.length >= 3 ? accToRating(gameAcc(a)) : null);
+  const out = {};
+  for (const p of ['opening', 'middlegame', 'endgame']) out[p] = { w: rate(by[p].w), b: rate(by[p].b) };
+  out.overall = { w: rate(all.w), b: rate(all.b) };
+  return out;
+}
+
 // positions[p] = { eval, best, pv, second: {eval, uci} | null } for the position before move p+1.
 export function buildReview({ startFen, moves, positions, depth, isBook = () => false, openingOf = () => null }) {
   const fens = [startFen, ...moves.map((m) => m.fen)];
@@ -69,8 +118,7 @@ export function buildReview({ startFen, moves, positions, depth, isBook = () => 
     const before = P.eval, after = A.eval;
     const wb = forSide(before, side), wa = forSide(after, side);
     const drop = Math.max(0, wb - wa);
-    const acc = Math.max(0, Math.min(100, 103.1668 * Math.exp(-0.04354 * drop) - 3.1669));
-    accs[side].push(acc);
+    accs[side].push(moveAcc(drop));
     const cp = (ev) => (ev.mate != null ? (ev.mate > 0 ? 1000 : -1000) : Math.max(-1000, Math.min(1000, ev.cp)));
     losses[side].push(Math.max(0, (side === 'w' ? 1 : -1) * (cp(before) - cp(after))));
     swings.push({ ply: i + 1, swing: Math.abs(winPct(after) - winPct(before)) });
@@ -103,12 +151,6 @@ export function buildReview({ startFen, moves, positions, depth, isBook = () => 
     cls.push(c);
     notes.push(explain({ c, i, side, fen: fens[i], after: m.fen, move: m, P, A, wb, wa, openingOf }));
   });
-  const gameAcc = (a) => {
-    if (!a.length) return 100;
-    const mean = a.reduce((s, x) => s + x, 0) / a.length;
-    const harm = a.length / a.reduce((s, x) => s + 1 / Math.max(x, 1), 0);
-    return (mean + harm) / 2;
-  };
   const avg = (a) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0);
   const moments = swings.filter((s) => s.swing >= 12 || ['brilliant', 'great', 'blunder', 'miss'].includes(cls[s.ply - 1]))
     .sort((a, b) => b.swing - a.swing).slice(0, 6).map((s) => s.ply).sort((a, b) => a - b);

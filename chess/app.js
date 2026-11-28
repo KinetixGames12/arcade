@@ -2,7 +2,7 @@
 import { Chess, DEFAULT_POSITION } from './vendor/chess.js?v=2';
 import { Board, PIECE_SETS } from './board.js?v=6';
 import * as snd from './sounds.js?v=1';
-import { buildReview, coachNote } from './review.js?v=1';
+import { buildReview, coachNote, phaseRatings } from './review.js?v=2';
 import { CLASSES, ORDER, badgeSvg } from './badges.js?v=1';
 import * as bots from './bots.js?v=1';
 import * as book from './openings.js?v=1';
@@ -57,10 +57,17 @@ const G = {
   historyId: null,
   bot: null,
   online: null, // { id, draw: {w,b}, takeback, gone, chat: [] }
+  // Analysis sideline (one at a time, like a variation): branches off the main line at ply `base`.
+  // { main, base, moves, cursor (1..moves.length), cls[], notes[], pos[] } — pos[k] = {eval,best,pv} before sideline move k.
+  side: null,
+  inSide: false, // viewing the sideline rather than the main line
 };
 
 const fenAt = (i) => (i === 0 ? G.startFen : G.moves[i - 1].fen);
-const curFen = () => fenAt(G.cursor);
+// A sideline only belongs to the main line it was made on: replacing G.moves drops it.
+const sideLive = () => G.mode === 'analysis' && !!G.side && G.side.main === G.moves;
+const inSide = () => G.inSide && sideLive();
+const curFen = () => (inSide() ? G.side.moves[G.side.cursor - 1].fen : fenAt(G.cursor));
 const turnOf = (fen) => fen.split(' ')[1];
 
 let posCache = { fen: null, chess: null };
@@ -228,14 +235,15 @@ function render() {
   }
   const fen = curFen();
   const c = chessAt(fen);
-  const last = G.cursor > 0 ? G.moves[G.cursor - 1] : null;
+  const sd = inSide();
+  const last = sd ? G.side.moves[G.side.cursor - 1] : G.cursor > 0 ? G.moves[G.cursor - 1] : null;
   let check = null;
   if (c.inCheck()) {
     const k = c.board().flat().find((p) => p && p.type === 'k' && p.color === c.turn());
     check = k?.square || null;
   }
   const i = G.cursor - 1;
-  const cls = i >= 0 ? (G.review?.cls[i] || G.coachCls?.[i]) : null;
+  const cls = sd ? G.side.cls[G.side.cursor - 1] : i >= 0 ? (G.review?.cls[i] || G.coachCls?.[i]) : null;
   board.set({
     fen, orientation: G.orientation, lastMove: last ? [last.from, last.to] : null, check, movable: canMove(), premovable: canPremove(),
     color: G.live || G.retry ? (G.retry ? turnOf(fen) : G.myColor) : turnOf(fen), arrows: currentArrows(), badge: cls && last ? { square: last.to, cls } : null,
@@ -289,6 +297,9 @@ function renderMoves() {
   const startNo = Number(G.startFen.split(' ')[5]) || 1;
   const blackFirst = turnOf(G.startFen) === 'b';
   const parts = [];
+  const sd = inSide();
+  // The sideline shows after the row holding the main-line move it replaces.
+  const varAfter = sideLive() ? Math.min(G.moves.length - 1, turnOf(fenAt(G.side.base)) === 'w' && G.side.base + 1 < G.moves.length ? G.side.base + 1 : G.side.base) : -1;
   G.moves.forEach((m, i) => {
     const ply = i + 1;
     const isWhite = blackFirst ? i % 2 === 1 : i % 2 === 0;
@@ -297,12 +308,26 @@ function renderMoves() {
     else if (i === 0) parts.push(`<span class="no">${no}.</span><span></span>`);
     const cls = G.review?.cls[i] || G.coachCls?.[i];
     const icon = cls && cls !== 'good' ? badgeSvg(cls, 16) : '';
-    parts.push(`<button class="mv ${G.cursor === ply ? 'on' : ''}" data-ply="${ply}">${icon}${esc(m.san)}</button>`);
+    parts.push(`<button class="mv ${!sd && G.cursor === ply ? 'on' : ''}" data-ply="${ply}">${icon}${esc(m.san)}</button>`);
+    if (i === varAfter) parts.push(sidelineHtml());
   });
   if (G.result && !G.live) parts.push(`<span class="res">${esc(G.result === '1/2-1/2' ? '½–½' : G.result)}</span>`);
   el.innerHTML = parts.join('') || '<p class="muted small empty">No moves yet.</p>';
   const on = el.querySelector('.mv.on');
   if (on) el.scrollTop = on.offsetTop - el.offsetTop - el.clientHeight / 2;
+}
+
+function sidelineHtml() {
+  const s = G.side;
+  const moves = s.moves.map((m, k) => {
+    const f = k === 0 ? fenAt(s.base) : s.moves[k - 1].fen;
+    const no = Number(f.split(' ')[5]) || 1;
+    const num = turnOf(f) === 'w' ? `${no}.` : k === 0 ? `${no}…` : '';
+    const cls = s.cls[k];
+    const icon = cls && cls !== 'good' ? badgeSvg(cls, 14) : '';
+    return `${num ? `<span class="vno">${num}</span>` : ''}<button class="vmv ${inSide() && s.cursor === k + 1 ? 'on' : ''}" data-sk="${k + 1}">${icon}${esc(m.san)}</button>`;
+  }).join('');
+  return `<div class="var">${moves}<span class="var-act"><button data-sx="back" title="Back to the game">↩ Game</button><button data-sx="promote" title="Replace the rest of the game with this line (clears the review)">Make main line</button><button data-sx="del" aria-label="Delete sideline">✕</button></span></div>`;
 }
 
 function renderStatus() {
@@ -312,6 +337,7 @@ function renderStatus() {
   if (!s && G.live) s = turn === G.myColor ? 'Your move' : G.mode === 'bot' ? `${G.bot.name} is thinking…` : 'Waiting for opponent…';
   const op = book.gameOpening([G.startFen, ...G.moves.slice(0, G.cursor).map((m) => m.fen)]);
   $('#opening').textContent = op ? `${op.eco} · ${op.name}` : '';
+  if (!s && inSide()) s = 'Exploring a sideline · ↩ Game or Esc to return';
   if (!s && G.mode === 'analysis') s = G.moves.length ? 'Analysis' : 'Analysis board — move any piece';
   $('#status').textContent = s;
   renderCoach();
@@ -415,11 +441,24 @@ function userMove(mv) {
     return;
   }
   if (G.mode === 'analysis') {
-    if (G.cursor < G.moves.length) {
-      if (G.moves[G.cursor].uci === r.uci) { G.cursor++; return afterNav(); }
-      G.moves = G.moves.slice(0, G.cursor);
-      if (G.review) { G.review = null; G.historyId = null; }
-      G.result = null;
+    if (inSide()) {
+      const s = G.side;
+      if (s.moves[s.cursor]?.uci === r.uci) { s.cursor++; return afterNav(); }
+      s.moves = [...s.moves.slice(0, s.cursor), r];
+      s.cls.length = s.notes.length = s.cursor;
+      s.pos.length = s.cursor + 1;
+      s.cursor++;
+      afterNav();
+      return gradeSide(s);
+    }
+    if (G.cursor < G.moves.length && G.moves[G.cursor].uci === r.uci) { G.cursor++; return afterNav(); }
+    // Off the main line of a game (or past the end of a reviewed one): explore a sideline, keep the game.
+    if (G.cursor < G.moves.length || G.review) {
+      G.side = { main: G.moves, base: G.cursor, moves: [r], cursor: 1, cls: [], notes: [], pos: [] };
+      G.inSide = true;
+      G.status = '';
+      afterNav();
+      return gradeSide(G.side);
     }
     G.moves.push(r);
     G.cursor = G.moves.length;
@@ -631,6 +670,7 @@ function loadGameInto(entry, { review = false } = {}) {
     live: false, myColor: entry.myColor || null, clock: null,
     review: entry.review?.v === 2 && entry.review.evals?.length === moves.length + 1 ? entry.review : null,
     historyId: entry.id || null, bot: null, online: null, coachCls: [], coachMsg: null, speech: null, premove: null, retry: null,
+    side: null, inSide: false,
   });
   G.orientation = entry.myColor === 'b' ? 'black' : 'white';
   showTab('analyze', true);
@@ -685,7 +725,7 @@ function stopAnalysis() {
 }
 
 function analyse() {
-  if (!engineOn || !analysisAllowed() || reviewRun) return;
+  if (!engineOn || !analysisAllowed() || reviewRun || (sideLive() && G.side.grading)) return;
   const fen = curFen();
   if (analysedFen === fen) return;
   analysedFen = fen;
@@ -719,10 +759,15 @@ async function fetchCloud(fen) {
 function currentArrows() {
   const arrows = [];
   const fen = curFen();
-  if (G.review && G.cursor > 0) {
+  const bad = ['inaccuracy', 'mistake', 'blunder', 'miss', 'good', 'excellent'];
+  if (inSide()) {
+    const k = G.side.cursor - 1;
+    const best = G.side.pos[k]?.best;
+    if (best && bad.includes(G.side.cls[k])) arrows.push({ from: best.slice(0, 2), to: best.slice(2, 4), color: 'rgba(129,182,76,.9)' });
+  } else if (G.review && G.cursor > 0) {
     const i = G.cursor - 1;
     const best = G.review.best[i];
-    if (best && !G.retry && ['inaccuracy', 'mistake', 'blunder', 'miss', 'good', 'excellent'].includes(G.review.cls[i])) {
+    if (best && !G.retry && bad.includes(G.review.cls[i])) {
       arrows.push({ from: best.slice(0, 2), to: best.slice(2, 4), color: 'rgba(129,182,76,.9)' });
     }
   }
@@ -747,7 +792,7 @@ function renderEngineCard() {
     if (liveLines.term) top = liveLines.term;
     else if (liveLines.lines[0]) top = whiteEval(liveLines.lines[0], fen);
   }
-  if (!top && G.review) top = G.review.evals[G.cursor];
+  if (!top) top = inSide() ? G.side.pos[G.side.cursor]?.eval || null : G.review?.evals[G.cursor] || null;
   bar.querySelector('.fill').style.height = `${winPct(top)}%`;
   bar.querySelector('.num').textContent = fmtEval(top);
   bar.classList.toggle('flip', G.orientation === 'black');
@@ -863,14 +908,23 @@ function renderReviewOut() {
   const count = (color, c) => r.cls.filter((x, i) => x === c && side(i) === color).length;
   const rows = ORDER.map((c) => { const w = count('w', c), b = count('b', c); return `<tr class="${w + b ? '' : 'zero'}"><td>${w}</td><th>${badgeSvg(c, 18)}${CLASSES[c].label}</th><td>${b}</td></tr>`; }).join('');
   const i = G.cursor - 1;
-  const c = i >= 0 ? r.cls[i] : null;
-  const note = i >= 0 && c ? `<div class="rv-note" style="--c:${CLASSES[c].color}">${badgeSvg(c, 24)}<p>${esc(r.notes?.[i] || '')}</p></div>` : '<p class="muted small">Step through the game with ← → or click any move. Each move gets a badge and an explanation.</p>';
-  const canRetry = i >= 0 && ['inaccuracy', 'mistake', 'blunder', 'miss'].includes(c) && r.best[i];
-  const showBest = i >= 0 && r.best[i] && r.best[i] !== G.moves[i].uci;
+  const sd = inSide();
+  const c = sd ? G.side.cls[G.side.cursor - 1] : i >= 0 ? r.cls[i] : null;
+  const text = sd ? G.side.notes[G.side.cursor - 1] : r.notes?.[i];
+  const note = c ? `<div class="rv-note" style="--c:${CLASSES[c].color}">${sd ? '<span class="rv-tag">Sideline</span>' : ''}${badgeSvg(c, 24)}<p>${esc(text || '')}</p></div>`
+    : sd ? '<p class="muted small">Sideline: checking this move…</p>'
+    : '<p class="muted small">Step through the game with ← → or click any move. Each move gets a badge and an explanation. Make your own move on the board to explore a sideline.</p>';
+  const canRetry = !sd && i >= 0 && ['inaccuracy', 'mistake', 'blunder', 'miss'].includes(c) && r.best[i];
+  const showBest = !sd && i >= 0 && r.best[i] && r.best[i] !== G.moves[i].uci;
+  const pr = phaseRatings({ fens: r.evals.map((_, k) => fenAt(Math.min(k, G.moves.length))), evals: r.evals, cls: r.cls });
+  const perfRow = (key, label) => `<tr class="${key}"><td>${pr[key].w ?? '—'}</td><th>${label}</th><td>${pr[key].b ?? '—'}</td></tr>`;
+  const perf = `<p class="muted small">Estimated rating this game <span title="A rough guess from move accuracy. Book moves are skipped; phases with fewer than 3 moves show —.">(rough)</span></p>
+    <table class="rv-perf">${perfRow('opening', 'Opening')}${perfRow('middlegame', 'Middlegame')}${perfRow('endgame', 'Endgame')}${perfRow('overall', 'Overall')}</table>`;
   const moments = (r.moments || []).map((ply) => `<button data-ply="${ply}">${badgeSvg(r.cls[ply - 1], 16)}${Math.ceil(ply / 2)}${side(ply - 1) === 'w' ? '.' : '…'} ${esc(G.moves[ply - 1]?.san || '')}</button>`).join('');
   out.innerHTML = `
     <h3>Game Review${r.opening ? ` <span class="muted small">· ${esc(r.opening.name)}</span>` : ''}</h3>
     <div class="rv-head"><div class="rv-acc w"><b>${r.acc.w.toFixed(1)}</b><span>${esc(G.white.name)}</span></div><span class="rv-mid">Accuracy</span><div class="rv-acc b"><b>${r.acc.b.toFixed(1)}</b><span>${esc(G.black.name)}</span></div></div>
+    ${perf}
     ${graphSvg(r)}
     ${note}
     <div class="rv-btns">${canRetry ? '<button class="btn primary" data-rv="retry">Retry this move</button>' : ''}${showBest ? '<button class="btn" data-rv="line">Show best line</button>' : ''}<button class="btn" data-rv="next">Next mistake →</button></div>
@@ -936,11 +990,87 @@ function playBestLine(i) {
   tick();
 }
 
+/* ── sidelines ───────────────────────────────────────────────── */
+// Quick fixed-depth eval of one position: { eval, best, pv }, or null if superseded.
+async function quickEval(fen) {
+  const term = terminalEval(fen);
+  if (term) return { eval: term, best: null, pv: [] };
+  const res = await getEngine().search(fen, { depth: 14, multipv: 1, hash: 64 });
+  if (!res) return null;
+  const a = res.lines[0];
+  return { eval: a ? whiteEval(a, fen) : { cp: 0 }, best: res.best, pv: a?.pv || [] };
+}
+
+// Grades every ungraded sideline move (badge + explanation, like Game Review), one at a time,
+// then resumes live analysis. Live analysis waits meanwhile so it doesn't steal the engine.
+async function gradeSide(s) {
+  if (s.grading) return;
+  s.grading = true;
+  try {
+    let k;
+    while (G.side === s && !reviewRun && (k = s.moves.findIndex((_, j) => !s.cls[j])) >= 0) {
+      const mv = s.moves[k];
+      const fenBefore = k === 0 ? fenAt(s.base) : s.moves[k - 1].fen;
+      if (!s.pos[k]) {
+        s.pos[k] = k === 0 && G.review && G.review.evals.length === G.moves.length + 1
+          ? { eval: G.review.evals[s.base], best: G.review.best[s.base], pv: G.review.pv?.[s.base] || [] }
+          : await quickEval(fenBefore);
+      }
+      const after = s.pos[k] && s.moves[k] === mv ? s.pos[k + 1] || await quickEval(mv.fen) : null;
+      if (!s.pos[k] || !after) break; // superseded
+      if (s.moves[k] !== mv) continue; // sideline changed under us
+      s.pos[k + 1] = after;
+      const note = coachNote(fenBefore, mv, s.pos[k], after);
+      s.cls[k] = note.cls;
+      s.notes[k] = note.text;
+      renderMoves();
+      renderReviewOut();
+    }
+  } catch (e) {
+    toast(`Engine error: ${e.message}`);
+  } finally {
+    s.grading = false;
+    if (G.side === s) { analysedFen = null; render(); analyse(); }
+  }
+}
+
+function leaveSide(action) {
+  const s = G.side;
+  if (!sideLive()) return;
+  if (action === 'promote') {
+    G.moves = [...G.moves.slice(0, s.base), ...s.moves];
+    G.cursor = s.base + s.cursor;
+    if (G.review) { G.review = null; G.historyId = null; }
+    G.result = null;
+    G.side = null;
+    G.inSide = false;
+    return afterNav();
+  }
+  if (action === 'del') G.side = null;
+  goto(s.base);
+}
+
 /* ── navigation ──────────────────────────────────────────────── */
 function goto(ply) {
   if (G.retry) { G.retry = null; G.status = ''; }
   clearTimeout(lineTimer);
+  G.inSide = false;
   G.cursor = Math.max(0, Math.min(G.moves.length, ply));
+  afterNav();
+}
+// One move back/forward — walks the sideline when you're in it, and back out to the game at its start.
+function step(d) {
+  if (!inSide()) return goto(G.cursor + d);
+  const s = G.side;
+  const k = s.cursor + d;
+  if (k < 1) return goto(s.base);
+  s.cursor = Math.min(s.moves.length, k);
+  clearTimeout(lineTimer);
+  afterNav();
+}
+function toEnd() {
+  if (!inSide()) return goto(G.moves.length);
+  G.side.cursor = G.side.moves.length;
   afterNav();
 }
 function afterNav() {
@@ -956,11 +1086,24 @@ document.querySelector('.navbtns').addEventListener('click', (e) => {
   if (!b) return;
   const n = b.dataset.nav;
   if (n === 'flip') return flip();
-  goto(n === 'start' ? 0 : n === 'prev' ? G.cursor - 1 : n === 'next' ? G.cursor + 1 : G.moves.length);
+  if (n === 'start') goto(0);
+  else if (n === 'prev') step(-1);
+  else if (n === 'next') step(1);
+  else toEnd();
 });
 $('#moves').addEventListener('click', (e) => {
   const b = e.target.closest('[data-ply]');
-  if (b) goto(Number(b.dataset.ply));
+  if (b) return goto(Number(b.dataset.ply));
+  const sk = e.target.closest('[data-sk]');
+  if (sk && sideLive()) {
+    if (G.retry) { G.retry = null; G.status = ''; }
+    clearTimeout(lineTimer);
+    G.inSide = true;
+    G.side.cursor = Number(sk.dataset.sk);
+    return afterNav();
+  }
+  const sx = e.target.closest('[data-sx]');
+  if (sx) leaveSide(sx.dataset.sx);
 });
 // Swipe left/right (touch) to step through moves. On the board itself only
 // when it is not your move, so dragging pieces never fights the swipe.
@@ -976,7 +1119,7 @@ $('#moves').addEventListener('click', (e) => {
     if (!ok) return;
     const t = e.changedTouches[0];
     const dx = t.clientX - sx, dy = t.clientY - sy;
-    if (Math.abs(dx) > 50 && Math.abs(dy) < 40) goto(G.cursor + (dx < 0 ? 1 : -1));
+    if (Math.abs(dx) > 50 && Math.abs(dy) < 40) step(dx < 0 ? 1 : -1);
   }, { passive: true });
 })();
 
@@ -984,10 +1127,11 @@ document.addEventListener('keydown', (e) => {
   if (e.target.closest('input, textarea, select, [contenteditable]') || e.metaKey || e.ctrlKey || e.altKey) return;
   if (document.querySelector('dialog[open]')) return;
   if (G.mode === 'learn') return;
-  if (e.key === 'ArrowLeft') goto(G.cursor - 1);
-  else if (e.key === 'ArrowRight') goto(G.cursor + 1);
+  if (e.key === 'ArrowLeft') step(-1);
+  else if (e.key === 'ArrowRight') step(1);
   else if (e.key === 'ArrowUp' || e.key === 'Home') goto(0);
-  else if (e.key === 'ArrowDown' || e.key === 'End') goto(G.moves.length);
+  else if (e.key === 'ArrowDown' || e.key === 'End') toEnd();
+  else if (e.key === 'Escape' && inSide()) goto(G.side.base);
   else if (e.key === 'f' || e.key === 'F') flip();
   else return;
   e.preventDefault();
